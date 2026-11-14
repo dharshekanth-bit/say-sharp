@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Say Sharp</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#13203A">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header><h1><img src="icon-192.png" alt="" class="logo">Say Sharp <span>· speak less, say more</span></h1>
+  <div><button class="iconbtn" id="tipsBtn" aria-label="Toolkit">💡</button><button class="iconbtn" id="gear" aria-label="Settings">⚙︎</button></div>
+</header>
+
+<main>
+  <!-- TODAY -->
+  <section class="view on" id="v-today"><div id="levelBox"></div><div id="aiNudge"></div><div id="todayBox"></div></section>
+
+  <!-- PRACTISE -->
+  <section class="view" id="v-practise">
+    <div class="seg" id="drills"></div>
+    <div class="card">
+      <p class="lbl" id="drillLbl"></p>
+      <div class="prompt" id="promptTxt"></div>
+      <div class="chips" id="structure"></div>
+      <div class="starter" id="starter"></div>
+      <div class="row" style="justify-content:space-between;margin-top:6px">
+        <button class="link" id="newPrompt">↻ New prompt</button>
+        <button class="link" id="ownPrompt">✎ My own topic</button>
+      </div>
+    </div>
+    <div class="big">
+      <button class="rec" id="startPractise" aria-label="Start"><svg viewBox="0 0 24 24" fill="#fff"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0" stroke="#fff" stroke-width="2" fill="none"/><path d="M12 18v3" stroke="#fff" stroke-width="2"/></svg></button>
+      <p>Take 3 seconds to think. Then tap and speak.</p>
+    </div>
+    <div class="card">
+      <p class="lbl">Walk &amp; talk</p>
+      <p style="margin:0 0 10px;font-size:15px">Talk out loud on a walk. Long recordings are fine. The coach reviews it when you stop.</p>
+      <div class="chips" id="walkTopics"></div>
+      <button class="btn" id="startWalk" style="margin-top:12px">Start walk recording</button>
+    </div>
+  </section>
+
+  <!-- ROLE-PLAY -->
+  <section class="view" id="v-roleplay">
+    <div class="card" style="background:var(--navy);color:#fff"><p class="lbl" style="color:#9FB0CC">Role-play</p>
+      <p style="margin:0;font-size:15px">Real spoken conversations. They talk, you answer out loud, they react and push back. Hands-free, like a phone call. Full scorecard at the end.</p></div>
+    <div id="scnList"></div>
+  </section>
+
+  <!-- GAMES -->
+  <section class="view" id="v-games"><div class="gamegrid" id="gameGrid"></div>
+    <p class="note" style="padding:14px 4px">Filler Fighter and Taboo listen live, so they need Chrome and internet. Rapid Fire and Squeeze It are scored by the AI coach.</p></section>
+
+  <!-- PROGRESS -->
+  <section class="view" id="v-progress">
+    <div class="stats" id="stats"></div>
+    <div class="card"><p class="lbl">Your speaking profile · last 10 AI-scored sessions</p><div class="dims" id="profile"></div></div>
+    <div class="card"><p class="lbl" id="gridLbl">12-week programme</p><div class="grid60" id="grid60"></div></div>
+    <div class="card"><p class="lbl">Check-ins · Day 1 → 20 → 40 → 60</p><div id="checkins"></div></div>
+    <div class="card"><p class="lbl">Fillers per minute (lower is better)</p><div id="chart"></div></div>
+    <div class="card"><p class="lbl">Your top fillers &amp; weak words</p><div class="chips" id="topF"></div></div>
+    <div class="card"><p class="lbl">Badges</p><div class="badges" id="badgeGrid"></div></div>
+    <div class="card list"><p class="lbl">Sessions</p><div id="sessions"></div></div>
+  </section>
+
+  <!-- TIPS -->
+  <section class="view" id="v-tips"></section>
+
+  <!-- SETTINGS -->
+  <section class="view" id="v-settings">
+    <div class="card">
+      <p class="lbl">AI coach (free)</p>
+      <p style="margin:0 0 6px;font-size:15px">The AI coach listens to your recording, writes down every word including “uh”, “maybe” and restarts, and scores you like a real coach.</p>
+      <ol class="steps2">
+        <li>Open <b>aistudio.google.com</b> and sign in with Google.</li>
+        <li>Tap <b>Get API key</b> → <b>Create API key</b>. Copy it.</li>
+        <li>Paste it below and tap <b>Connect</b>.</li>
+      </ol>
+      <div class="keybox"><input id="aiKey" type="password" placeholder="Paste your key here" autocomplete="off"><button class="btn" id="aiTest" style="width:auto;padding:10px 16px">Connect</button></div>
+      <div class="status" id="aiStatus"></div>
+      <label class="set" for="aiModel">AI model</label>
+      <select id="aiModel"><option value="">Automatic (recommended)</option></select>
+      <p class="note" style="padding:8px 0 0">Your key stays on this phone only. On Google’s free plan, recordings may be used by Google to improve its products, so avoid sharing confidential client details.</p>
+    </div>
+    <div class="card">
+      <p class="lbl">Speech</p>
+      <label class="set" for="lang">Language for live text</label>
+      <select id="lang">
+        <option value="en-IN">English – India / Sri Lanka</option>
+        <option value="en-GB">English – UK</option>
+        <option value="en-AU">English – Australia</option>
+        <option value="en-US">English – US</option>
+      </select>
+      <div class="switch" style="margin-top:10px"><span>Buzz when I say a filler (live mode)</span><input type="checkbox" id="buzz"></div>
+      <div class="switch"><span>Show live text while AI coach records<br><small style="color:var(--mut)">Off is more reliable on Android</small></span><input type="checkbox" id="liveCaptions"></div>
+      <div class="switch"><span>Conversations: speak replies out loud</span><input type="checkbox" id="speakReplies"></div>
+      <div class="switch"><span>Hands-free conversations<br><small style="color:var(--mut)">Listens after it speaks, replies when you stop</small></span><input type="checkbox" id="handsFree"></div>
+      <label class="set" for="waitMs">Wait before replying (after you stop talking)</label>
+      <select id="waitMs"><option value="1400">Short – 1.4 seconds</option><option value="2000">Normal – 2 seconds</option><option value="3000">Long – 3 seconds (time to think)</option></select>
+      <label class="set" for="voice">Conversation voice</label>
+      <select id="voice"></select>
+    </div>
+    <div class="card">
+      <p class="lbl">Words to catch</p>
+      <label class="set" for="fillers">Filler words</label>
+      <textarea id="fillers"></textarea>
+      <label class="set" for="softeners">Weak words</label>
+      <textarea id="softeners"></textarea>
+      <button class="btn sec" id="resetWords" style="margin-top:10px">Reset word lists</button>
+    </div>
+    <div class="card">
+      <p class="lbl">Install on your phone</p>
+      <p style="margin:0;font-size:15px">In Chrome, tap ⋮ then <b>Add to Home screen</b> → <b>Install</b>.</p>
+      <button class="btn" id="installBtn" style="margin-top:12px;display:none">Install app</button>
+    </div>
+    <div class="card">
+      <p class="lbl">Data</p>
+      <p style="margin:0 0 10px;font-size:14px;color:var(--mut)">Sessions and recordings are saved on this phone.</p>
+      <button class="btn sec" id="exportBtn">Export my sessions (.json)</button>
+      <button class="btn sec" id="wipeBtn" style="color:var(--red)">Delete all sessions</button>
+    </div>
+  </section>
+</main>
+
+<nav id="nav">
+  <button data-v="today" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M8 15l2.5 2.5L16 13"/></svg>Today</button>
+  <button data-v="practise"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>Practise</button>
+  <button data-v="roleplay"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/><path d="M9 11h.01M12 11h.01M15 11h.01"/></svg>Role-play</button>
+  <button data-v="games"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="11" rx="5"/><path d="M7 11v3M5.5 12.5h3M15 12h.01M18 12.5h.01"/></svg>Games</button>
+  <button data-v="progress"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Progress</button>
+</nav>
+
+<!-- RECORDER -->
+<div id="recorder">
+  <div class="rtop"><div class="timer" id="timer">0:00</div><div class="ptxt" id="rPrompt"></div></div>
+  <div class="counter" id="counters">
+    <div id="cF"><b id="nF">0</b><span>Fillers</span></div>
+    <div><b id="nW">0</b><span>Words</span></div>
+  </div>
+  <div id="gameTop" style="display:none"><div class="bigtimer" id="bigT">0</div><div class="banned" id="bannedBox"></div></div>
+  <div id="live"></div>
+  <div class="wave" id="wave"></div>
+  <div class="note" id="rNote"></div>
+  <div class="rbot">
+    <button class="btn sec" id="cancelBtn" style="flex:0 0 64px" aria-label="Cancel">✕</button>
+    <button class="btn sec" id="pocketBtn">Pocket mode</button>
+    <button class="btn stopbtn" id="stopBtn">Stop</button>
+  </div>
+</div>
+<div id="pocket"><div class="pt" id="pTime">0:00</div><div style="margin-top:8px">Recording · screen dimmed</div><div class="ring" id="pRing">Hold 2 sec<br>to unlock</div></div>
+
+<!-- ROLE-PLAY CHAT -->
+<div id="rp">
+  <div class="rphead"><div class="av" id="rpAv">CEO</div><div><b id="rpWho"></b><small id="rpSetup"></small></div><button class="x" id="rpClose" aria-label="Close">✕</button></div>
+  <div id="chat"></div>
+  <div class="rpbot" id="rpBot"></div>
+</div>
+
+<div id="result"></div>
+<div class="countdown" id="countdown"><div class="q" id="cdQ"></div><div class="n" id="cdN">3</div></div>
+<div class="pop" id="pop"><div class="box" id="popBox"></div></div>
+<div class="toast" id="toast"></div>
+
+<script src="analysis.js"></script>
+<script src="content.js"></script>
+<script src="programme.js"></script>
+<script src="ai.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
