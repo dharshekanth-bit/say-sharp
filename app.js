@@ -4,11 +4,18 @@ const C = CONTENT, DRILLS = C.DRILLS;
 
 /* ---------- storage ---------- */
 const LS = {get:(k,d)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}}, set:(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){toast('Phone storage is full')}}};
-const settings = Object.assign({lang:'en-IN', buzz:true, liveAudio:true, liveCaptions:false, speakReplies:true, handsFree:true, waitMs:2000, voice:'', aiKey:'', aiModel:'', aiModels:[], aiLastModel:'',
+const settings = Object.assign({lang:'en-IN', buzz:true, liveAudio:true, liveCaptions:false, speakReplies:true, handsFree:true, waitMs:2000, camera:true, name:'', voice:'', aiKey:'', aiModel:'', aiModels:[], aiLastModel:'',
   fillers:TTP.DEFAULT_FILLERS.join(', '), softeners:TTP.DEFAULT_SOFTENERS.join(', ')}, LS.get('ttp.settings',{}));
 const saveSettings = () => LS.set('ttp.settings', settings);
 let sessions = LS.get('ttp.sessions', []);
-const saveSessions = () => LS.set('ttp.sessions', sessions);
+function slimSessions(){
+  const keep = new Set(sessions.slice().sort((a,b)=>b.ts-a.ts).slice(0,120).map(x=>x.id));
+  sessions.forEach(x=>{ if(keep.has(x.id) || x.bench || x.slim) return;
+    x.segments=[]; delete x.hist; if(x.m) delete x.m.matched;
+    if(x.ai) x.ai={scores:x.ai.scores, headline:x.ai.headline, next_step:x.ai.next_step, presence:x.ai.presence, skill_check:x.ai.skill_check, clarity:x.ai.clarity, pacing:x.ai.pacing, expression:x.ai.expression, tip:x.ai.tip};
+    x.note='Older session: details trimmed to save space on your phone.'; x.slim=true; });
+}
+const saveSessions = () => { try{ if(JSON.stringify(sessions).length > 3000000) slimSessions(); }catch(e){} LS.set('ttp.sessions', sessions); };
 const gam = Object.assign({xp:0, badges:{}, rpCount:0, best:{}}, LS.get('ttp.gam',{}));
 const saveGam = () => LS.set('ttp.gam', gam);
 const wordList = s => s.split(',').map(x=>x.trim().toLowerCase()).filter(Boolean);
@@ -82,6 +89,7 @@ function afterSession(s){
     if(sc>=80) award('s80'); if(sc>=90) award('s90');
     if(s.kind==='talk' && s.m && s.m.fillerCount===0 && s.dur>=30 && s.m.words>=40) award('zero');
   }
+  if(s.camera){ award('cam1'); if(s.m && s.m.presence>=8) award('presence8'); }
   const st=streak(); if(st>=3) award('streak3'); if(st>=7) award('streak7'); if(st>=14) award('streak14');
   let xp = 3, why='practice';
   if(s.kind==='talk' && sc!=null){ xp = sc/5+5; why = 'score '+sc; }
@@ -103,12 +111,19 @@ let rec = null, wakeLock = null;
 function record(o){
   return new Promise(async resolve => {
     if(o.live && !SR){ if(!o.audio){ toast('This needs live listening: open the app in Chrome with internet.',4500); return resolve(null); } o.live=false; }
-    rec = Object.assign({t0:0, committed:[], cur:{}, interim:'', chunks:[], stream:null, mr:null, sr:null, stopping:false, maxF:0, note:'', audioOff:false, targetBuzzed:false, lastWords:0, lastChange:0, fail:null}, o, {resolve});
+    rec = Object.assign({t0:0, committed:[], cur:{}, interim:'', chunks:[], vchunks:[], frames:[], stream:null, mr:null, vmr:null, sr:null, stopping:false, maxF:0, note:'', audioOff:false, targetBuzzed:false, lastWords:0, lastChange:0, fail:null}, o, {resolve});
     if(o.audio){
       try{
-        rec.stream = await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true, noiseSuppression:true, autoGainControl:true}});
+        const aC = {echoCancellation:true, noiseSuppression:true, autoGainControl:true};
+        if(o.video){
+          try{ rec.stream = await navigator.mediaDevices.getUserMedia({audio:aC, video:{facingMode:'user', width:{ideal:480}, height:{ideal:640}, frameRate:{ideal:15, max:20}}}); }
+          catch(ve){ rec.video=false; toast('Camera not available. Recording voice only.',3500); }
+        }
+        if(!rec.stream) rec.stream = await navigator.mediaDevices.getUserMedia({audio:aC});
         const mime = ['audio/webm;codecs=opus','audio/webm','audio/mp4','audio/ogg'].find(m=>window.MediaRecorder && MediaRecorder.isTypeSupported(m)) || '';
-        rec.mr = new MediaRecorder(rec.stream, mime?{mimeType:mime}:undefined);
+        const aStream = rec.video ? new MediaStream(rec.stream.getAudioTracks()) : rec.stream;
+        rec.mr = new MediaRecorder(aStream, mime?{mimeType:mime}:undefined);
+        if(rec.video) startCamera(rec);
         rec.mr.ondataavailable = e => { if(e.data && e.data.size) rec.chunks.push(e.data); };
         rec.mr.start(1000);
         startMeter(rec.stream);
@@ -133,9 +148,35 @@ function record(o){
       o.game ? '<div class="prompt" style="font-size:19px">'+esc(o.prompt)+'</div><span class="ph">Keep talking…</span>' :
       '<div class="prompt" style="font-size:19px;margin:0 0 8px">'+esc(o.prompt||'')+'</div><span class="ph">'+(o.hidden?'Pause two seconds. Pick a frame. Then answer, point first.': o.live?'Listening… start with your starter line.':'Recording… speak naturally. Your coach reviews it when you tap Stop.')+'</span>';
     $('#rNote').textContent = '';
+    $('#camWrap').style.display = rec.video ? '' : 'none';
+    $('#camPrompt').textContent = rec.video ? (o.hidden ? o.prompt : (o.prompt||'')) : '';
+    $('#live').style.display = rec.video && !o.live ? 'none' : '';
+    $('#recorder').classList.toggle('cam', !!rec.video);
     $('#recorder').classList.add('on');
     rec.tick = setInterval(tick, 200);
   });
+}
+function startCamera(r){
+  const v=$('#camView'); v.srcObject=r.stream; v.muted=true; v.play().catch(()=>{});
+  const vmime = ['video/webm;codecs=vp8,opus','video/webm;codecs=vp9,opus','video/webm','video/mp4'].find(m=>window.MediaRecorder && MediaRecorder.isTypeSupported(m)) || '';
+  try{
+    r.vmr = new MediaRecorder(r.stream, Object.assign({videoBitsPerSecond:300000, audioBitsPerSecond:32000}, vmime?{mimeType:vmime}:{}));
+    r.vmr.ondataavailable = e => { if(e.data && e.data.size) r.vchunks.push(e.data); };
+    r.vmr.start(1000);
+  }catch(e){ r.vmr=null; }
+  // low-resolution still frames for the AI coach (cheap on data)
+  const cv=document.createElement('canvas'), ctx=cv.getContext('2d');
+  const every = Math.max(2, Math.round((r.targetSec||60)/20));
+  r.frameTimer = setInterval(()=>{
+    if(!v.videoWidth) return;
+    const w=240, h=Math.round(v.videoHeight/v.videoWidth*w); cv.width=w; cv.height=h;
+    ctx.drawImage(v,0,0,w,h);
+    const data = cv.toDataURL('image/jpeg',0.55).split(',')[1];
+    r.frames.push({t:Math.round((Date.now()-r.t0)/1000), data});
+    if(r.frames.length>40) r.frames = r.frames.filter((_,i)=>i%2===0);
+  }, every*1000);
+  const grab=()=>{ if(!v.videoWidth || r.stopping) return; const w=240, h=Math.round(v.videoHeight/v.videoWidth*w); cv.width=w; cv.height=h; ctx.drawImage(v,0,0,w,h); r.frames.push({t:Math.round((Date.now()-r.t0)/1000), data:cv.toDataURL('image/jpeg',0.55).split(',')[1]}); };
+  setTimeout(grab, 1200);
 }
 function micHelp(e){
   const msg = (e && (e.name==='NotAllowedError' || e.name==='SecurityError')) ?
@@ -266,7 +307,10 @@ async function finish(cancel){
   $('#stopBtn').textContent='…';
   const srDone = new Promise(res=>{ if(!r.sr) return res(); r.onSrEnd=res; try{ r.sr.stop(); }catch(e){res();} setTimeout(res,1500); });
   const audioDone = new Promise(res=>{ if(!r.mr || r.mr.state==='inactive') return res(); r.mr.onstop=res; try{ r.mr.stop(); }catch(e){res();} setTimeout(res,2500); });
-  await Promise.all([srDone, audioDone]);
+  const videoDone = new Promise(res=>{ if(!r.vmr || r.vmr.state==='inactive') return res(); r.vmr.onstop=res; try{ r.vmr.stop(); }catch(e){res();} setTimeout(res,2500); });
+  clearInterval(r.frameTimer);
+  await Promise.all([srDone, audioDone, videoDone]);
+  const cv=$('#camView'); if(cv){ cv.pause(); cv.srcObject=null; }
   if(r.stream) r.stream.getTracks().forEach(t=>t.stop());
   stopMeter();
   try{ if(wakeLock){ await wakeLock.release(); wakeLock=null; } }catch(e){}
@@ -276,7 +320,8 @@ async function finish(cancel){
   $('#stopBtn').textContent='Stop';
   $('#recorder').classList.remove('on'); $('#pocket').classList.remove('on');
   rec = null;
-  r.resolve(cancel ? null : {dur, blob, segments:segs, note:r.note||'', fail:r.fail});
+  const vblob = r.vchunks.length ? new Blob(r.vchunks, {type: r.vchunks[0].type || 'video/webm'}) : null;
+  r.resolve(cancel ? null : {dur, blob, vblob, frames:r.frames, segments:segs, note:r.note||'', fail:r.fail});
 }
 $('#pocketBtn').onclick=()=>{ $('#pocket').classList.add('on'); toast('Hold the circle for 2 seconds to unlock',2000); };
 (()=>{ let t=null; const p=$('#pocket'), ring=$('#pRing');
@@ -326,22 +371,25 @@ function stopLoading(){ clearInterval(showLoading._t); }
 /* ---------- talk & read sessions ---------- */
 function newSession(o, raw){
   return {id:'s'+Date.now(), ts:Date.now(), kind:o.kind||'talk', drill:o.drill||'', prompt:o.prompt||'', targetSec:o.targetSec||0, maxWords:o.maxWords||0,
-    target:o.target||'', bench:o.bench||'', day:o.ctx?prog.day:0, stepK:o.stepK||'', ctx:o.ctx||null, structure:o.structure||null, focus:o.focus||'', hidden:!!o.hidden,
+    target:o.target||'', bench:o.bench||'', skillTitle:o.skillTitle||'', day:o.ctx?prog.day:0, stepK:o.stepK||'', ctx:o.ctx||null, structure:o.structure||null, focus:o.focus||'', hidden:!!o.hidden,
     dur:raw?raw.dur:0, segments:raw?raw.segments||[]:[], hes:[], hasAudio:false, note:raw?raw.note||'':'', source:raw&&raw.segments&&raw.segments.length?'live':'none'};
 }
 async function runTalk(o){
   const ai = AI.ready(), isRead = o.kind==='read';
-  const raw = await record({prompt:o.prompt, targetSec:o.targetSec, hidden:o.hidden, readTarget:isRead?o.target:null,
-    audio: ai ? true : (o.mode==='walk' || settings.liveAudio), live: ai ? (settings.liveCaptions && o.mode!=='walk') : o.mode!=='walk'});
+  const raw = await record({prompt:o.prompt, targetSec:o.targetSec, hidden:o.hidden, readTarget:isRead?o.target:null, video:!!o.camera && !isRead,
+    audio: ai ? true : (o.mode==='walk' || settings.liveAudio || !!o.camera), live: ai ? (settings.liveCaptions && o.mode!=='walk') : (o.mode!=='walk' && !(o.camera && !isRead))});
   if(!raw) return;
   const s = newSession(o, raw);
   showLoading(ai ? 'Your coach is listening…' : 'Checking your talk…');
   const pcm = await usablePcm(raw.blob);
   if(pcm){ try{ await putAudio(s.id, raw.blob); s.hasAudio=true; }catch(e){} }
+  if(raw.vblob && raw.vblob.size>5000){ try{ await putAudio(s.id+'_v', raw.vblob); s.hasVideo=true; }catch(e){} }
+  pruneMedia();
+  s.camera = !!(raw.frames && raw.frames.length);
   if(ai && pcm){
     try{
       if(isRead) s.ai = await AI.analyseRead(pcm, s.target);
-      else s.ai = await AI.analyseTalk(pcm, {task:o.task||'', prompt:s.prompt, structure:s.structure, targetSec:s.targetSec, maxWords:s.maxWords, focus:s.focus, dur:s.dur});
+      else s.ai = await AI.analyseTalk(pcm, {task:o.task||'', prompt:s.prompt, structure:s.structure, targetSec:s.targetSec, maxWords:s.maxWords, focus:s.focus, dur:s.dur}, s.camera ? raw.frames : null);
       s.segments = TTP.splitSegments(s.ai.transcript||''); s.source='ai';
     }catch(e){ s.aiError = e.user || e.message; }
   } else if(ai && !pcm){ s.aiError = 'No sound was recorded, so the coach could not listen. Check the microphone.'; }
@@ -353,6 +401,15 @@ async function runTalk(o){
   afterSession(s);
   openResult(s);
 }
+// keep the phone from filling up: check-in recordings are always kept
+async function pruneMedia(){
+  const vids = sessions.filter(x=>x.hasVideo && !x.bench).sort((a,b)=>b.ts-a.ts);
+  for(const x of vids.slice(14)){ await delAudio(x.id+'_v'); x.hasVideo=false; }
+  const auds = sessions.filter(x=>x.hasAudio && !x.bench).sort((a,b)=>b.ts-a.ts);
+  for(const x of auds.slice(60)){ await delAudio(x.id); x.hasAudio=false; }
+  saveSessions();
+}
+function presenceAvg(p){ if(!p) return null; const v=[p.eye_contact,p.expression,p.posture,p.energy].map(Number).filter(x=>x>0); return v.length? Math.round(v.reduce((a,b)=>a+b,0)/v.length*10)/10 : null; }
 function aiOverall(sc){
   const w={fluency:.18, clarity:.14, conciseness:.18, structure:.13, relevance:.13, confidence:.12, grammar:.12}; let t=0, tw=0;
   for(const k in w){ if(sc[k]==null) continue; t += Math.max(1,Math.min(10, +sc[k]||5))*w[k]; tw+=w[k]; }
@@ -378,7 +435,9 @@ function computeMetrics(s){
     return;
   }
   s.m = TTP.analyse({segments:s.segments, durationSec:s.dur, targetSec:s.targetSec, maxWords:s.maxWords, hesitations:s.hes, fillers:fl, softeners:so});
-  if(s.ai && s.ai.scores){ s.m.score = aiOverall(s.ai.scores); s.m.dims = s.ai.scores; s.m.tip = s.ai.next_step || s.m.tip; }
+  if(s.ai && s.ai.scores){ s.m.score = aiOverall(s.ai.scores); s.m.dims = s.ai.scores; s.m.tip = s.ai.next_step || s.m.tip;
+    const pa = presenceAvg(s.ai.presence); if(pa!=null && s.m.score!=null){ s.m.presence=pa; s.m.score = Math.round(s.m.score*0.85 + pa*10*0.15); }
+    if(s.ai.skill_check) s.m.skill = +s.ai.skill_check.score||null; }
   else if(!s.segments.length){ s.m.score = null; s.m.tip = s.hasAudio ? (s.aiError || 'Tap “Turn into text” to get your filler count and score.') : 'No speech was picked up. Check the microphone and try again.'; }
 }
 
@@ -420,6 +479,7 @@ function again(s){
 function closeResult(){ const a=$('#aud'); if(a) a.pause(); stopSpeak(); $('#result').classList.remove('on'); if($('#v-today').classList.contains('on')) renderToday(); if($('#v-progress').classList.contains('on')) renderProgress(); }
 let currentAudioURL=null;
 async function wireAudio(s){
+  if(s.hasVideo){ const vb=await getAudio(s.id+'_v'); const ve=$('#vid'); if(vb && ve){ ve.src=URL.createObjectURL(vb); } }
   if(!s.hasAudio) return;
   const b = await getAudio(s.id); if(!b) return;
   if(currentAudioURL) URL.revokeObjectURL(currentAudioURL);
@@ -453,6 +513,9 @@ async function openAIResult(s){
     <main>
       <div class="tip"><p class="lbl">Fix this next time</p>${esc(a.next_step||m.tip)}</div>
       ${isRp && a.outcome?`<div class="card"><p class="lbl">How they’d feel</p><p style="margin:0;font-size:15px">${esc(a.outcome)}</p></div>`:''}
+      ${a.skill_check&&s.focus?`<div class="card"><p class="lbl">Today’s skill · ${esc(s.skillTitle||'')}</p><div class="dims"><div class="dim"><span>Applied it</span><div class="bar"><i style="width:${(+a.skill_check.score||0)*10}%;background:${scoreClass(+a.skill_check.score||0)}"></i></div><b>${+a.skill_check.score||'–'}</b></div></div><p style="margin:8px 0 0;font-size:15px">${esc(a.skill_check.note||'')}</p></div>`:''}
+      ${s.hasVideo?`<div class="card"><p class="lbl">Watch yourself</p><video id="vid" controls playsinline preload="metadata" style="width:100%;border-radius:12px;background:#000"></video></div>`:''}
+      ${a.presence?presenceCard(a.presence):''}
       <div class="card"><p class="lbl">Your scores</p>${dimBars(a.scores||{})}</div>
       <div class="card"><p class="lbl">Fillers &amp; weak words · ${totalWeak} total · ${(totalWeak/mins).toFixed(1)} per min</p>
         <div class="chips">${(m.startFiller||m.startHesitation)&&!isRp?`<span class="chip r">Started with “${esc(m.startFiller||'uh')}”</span>`:''}${wordChips(m)}</div>
@@ -479,6 +542,13 @@ async function openAIResult(s){
   const tb=$('#tryBetter'); if(tb) tb.onclick=()=>{ closeResult(); runTalk({kind:'talk', prompt:s.prompt, targetSec:s.targetSec, maxWords:s.maxWords, structure:s.structure, drill:s.drill, task:'Second attempt. The speaker is trying to say it more like this model version: "'+a.better_version+'"'}); };
   wireDelete(s); wireResultButtons(s); wireAudio(s);
 }
+function presenceCard(p){
+  const rows=[['Eye contact',p.eye_contact],['Expression',p.expression],['Posture',p.posture],['Energy',p.energy]];
+  return `<div class="card"><p class="lbl">On camera · body language</p><div class="dims">${rows.map(([n,v])=>{v=Math.max(1,Math.min(10,+v||0));return `<div class="dim"><span>${n}</span><div class="bar"><i style="width:${v*10}%;background:${scoreClass(v)}"></i></div><b>${v}</b></div>`}).join('')}</div>
+    ${p.notes?`<p style="margin:10px 0 0;font-size:15px">${esc(p.notes)}</p>`:''}
+    ${(p.habits||[]).length?`<div class="chips" style="margin-top:10px">${p.habits.map(h=>`<span class="chip r">${esc(h)}</span>`).join('')}</div>`:''}
+    ${p.best?`<p style="margin:10px 0 0;font-size:14px;color:var(--green)">✓ ${esc(p.best)}</p>`:''}</div>`;
+}
 function grammarCard(list){
   list=(list||[]).filter(g=>g&&g.said&&g.correct);
   if(!list.length) return AI.ready()?`<div class="card"><p class="lbl">Grammar</p><span class="chip g">No grammar mistakes found ✓</span></div>`:'';
@@ -490,7 +560,7 @@ function pronCard(list){
   return `<div class="card"><p class="lbl">Pronunciation · tap 🔊 to hear it</p>${list.map(p=>`<div class="fix" style="display:flex;align-items:center;gap:10px"><div style="flex:1"><b style="color:var(--navy)">${esc(p.word)}</b> → <span style="font-weight:700;color:var(--green)">${esc(p.say_it||'')}</span>${p.issue?`<small>${esc(p.issue)}</small>`:''}</div><button class="spk" data-say="${esc(p.word)}">🔊</button></div>`).join('')}</div>`;
 }
 function wireSayIt(){ document.querySelectorAll('#result [data-say]').forEach(b=>b.onclick=async()=>{ await speak(b.dataset.say,{rate:.7}); await sleep(300); speak(b.dataset.say,{rate:1}); }); }
-function wireDelete(s){ const d=$('#delBtn'); if(d) d.onclick=async()=>{ if(!confirm('Delete this session?')) return; sessions=sessions.filter(x=>x.id!==s.id); saveSessions(); await delAudio(s.id); closeResult(); }; }
+function wireDelete(s){ const d=$('#delBtn'); if(d) d.onclick=async()=>{ if(!confirm('Delete this session?')) return; sessions=sessions.filter(x=>x.id!==s.id); saveSessions(); await delAudio(s.id); await delAudio(s.id+'_v'); closeResult(); }; }
 async function openLocalResult(s){
   const m=s.m, el=$('#result');
   const verdict = m.score==null ? 'Not scored yet' : m.score>=85?'Sharp and clear': m.score>=70?'Good, a few slips': m.score>=50?'Getting there':'Too many fillers';
@@ -502,6 +572,7 @@ async function openLocalResult(s){
     <div class="rhead">${ring(m.score)}<div><h2>${verdict}</h2><p>${esc(s.prompt)}</p></div></div>
     <main>
       ${s.aiError?`<div class="card" style="border:1.5px solid var(--red)"><p class="lbl" style="color:var(--red)">AI coach not used</p><p style="margin:0;font-size:14px">${esc(s.aiError)}</p></div>`:''}
+      ${s.hasVideo?`<div class="card"><p class="lbl">Watch yourself</p><video id="vid" controls playsinline preload="metadata" style="width:100%;border-radius:12px;background:#000"></video></div>`:''}
       ${!AI.ready()?`<div class="card aicard"><h3>Want a real coach’s score?</h3><p>This basic check only counts words. Turn on the free AI coach for full scoring and feedback.</p><button class="btn" onclick="closeResult();show('settings')">Turn on AI coach</button></div>`:''}
       <div class="tip"><p class="lbl">Fix this next time</p>${esc(m.tip)}</div>
       <div class="tiles">
@@ -700,7 +771,7 @@ function rpRender(){
 // Inline listener with end-of-speech detection
 function listen(auto){
   return new Promise(async resolve=>{
-    let stream, mr, actx, an, chunks=[], t0=Date.now(), ended=false, spoke=false, voiced=0, lastVoice=0, noise=[], timer;
+    let stream, mr, actx, an, chunks=[], t0=Date.now(), ended=false, spoke=false, voiced=0, lastVoice=0, noise=[], peak=0, timer;
     const finish=(ok)=>{ if(ended) return; ended=true; clearInterval(timer); try{ if(mr && mr.state!=='inactive') mr.stop(); }catch(e){ done(); } if(!ok) cancelled=true; };
     let cancelled=false;
     const done=()=>{ if(stream) stream.getTracks().forEach(t=>t.stop()); try{ actx && actx.close(); }catch(e){}
@@ -724,9 +795,11 @@ function listen(auto){
       let rms=0;
       if(an){ an.getFloatTimeDomainData(buf); let sum=0; for(let i=0;i<buf.length;i++) sum+=buf[i]*buf[i]; rms=Math.sqrt(sum/buf.length); }
       const bars=document.querySelectorAll('#rpWave i'); if(bars.length){ bars[k%bars.length].style.height=(4+Math.min(26,rms*400))+'px'; k++; }
-      if(el<400){ noise.push(rms); return; }
-      const nf = noise.length ? noise.slice().sort((a,b)=>a-b)[Math.floor(noise.length/2)] : 0.005;
-      const thr = Math.max(nf*3.2, 0.012);
+      noise.push(rms); if(noise.length>600) noise.shift(); if(rms>peak) peak=rms;
+      if(el<300) return;
+      const sorted = noise.slice().sort((a,b)=>a-b);
+      const nf = sorted[Math.floor(sorted.length*0.15)] || 0.004;   // quietest moments = background noise
+      const thr = Math.min(Math.max(nf*3.2, 0.012), 0.08);
       if(rms>thr){ voiced+=60; lastVoice=now; if(voiced>350) spoke=true; }
       const hint=$('#rpHint');
       if(auto && spoke){
@@ -734,7 +807,7 @@ function listen(auto){
         if(hint) hint.textContent = quiet>700 ? 'Pause… replying in a moment' : 'Listening…';
         if(quiet>=settings.waitMs) finish(true);
       }
-      if(auto && !spoke && el>15000){ finish(false); toast('I didn’t hear anything. Tap Answer when ready.',3000); }
+      if(auto && !spoke && el>15000){ if(peak>0.03){ spoke=true; lastVoice=now; } else { finish(false); toast('I didn’t hear anything. Tap Answer when ready.',3000); } }
       if(el>150000) finish(true);
     },60);
     rp.listener={stop:()=>finish(true), cancel:()=>finish(false)};
@@ -949,105 +1022,137 @@ function newPrompt(own){
 }
 $('#newPrompt').onclick=()=>newPrompt();
 $('#ownPrompt').onclick=()=>{ const t = window.prompt('What do you want to talk about?'); if(t && t.trim()) newPrompt(t.trim()); };
-$('#startPractise').onclick=()=>{ const d=DRILLS[drill]; runTalk({kind:'talk', drill, prompt, targetSec:d.sec, maxWords:d.maxWords||0, structure:d.structure}); };
+$('#startPractise').onclick=()=>{ const d=DRILLS[drill]; runTalk({kind:'talk', drill, prompt, targetSec:d.sec, maxWords:d.maxWords||0, structure:d.structure, camera:$('#pCam').dataset.on==='1'}); };
+(()=>{ const t=$('#pCam'); const d0=settings.camera && AI.ready(); t.dataset.on=d0?1:0; t.querySelector('b').textContent=d0?'On':'Off'; t.onclick=()=>{ const on=t.dataset.on!=='1'; t.dataset.on=on?1:0; t.querySelector('b').textContent=on?'On':'Off'; }; })();
 let walkTopic='';
 $('#walkTopics').innerHTML = C.WALK_TOPICS.map(t=>`<span class="chip t">${esc(t)}</span>`).join('');
 $('#walkTopics').querySelectorAll('.chip').forEach(c=>c.onclick=()=>{ walkTopic = walkTopic===c.textContent?'':c.textContent; $('#walkTopics').querySelectorAll('.chip').forEach(x=>x.classList.toggle('g', x.textContent===walkTopic)); });
 $('#startWalk').onclick=()=>runTalk({kind:'talk', mode:'walk', drill:'walk', prompt: walkTopic || 'Walk & talk', targetSec:0, task:'Free talk recorded while walking. Judge it as natural spoken speech.'});
 
-/* ---------- 12-week programme ---------- */
-let prog = Object.assign({day:1, done:{}, reps:{}, results:[], pending:null, completed:{}}, LS.get('ttp.prog',{}));
-const saveProg = () => LS.set('ttp.prog', prog);
-const STEP_INFO = {warm:['Warm-up','Read aloud clearly','🗣'], lesson:['Lesson','This week’s skill','💡'], drill:['Drills','Short timed answers','⏱'], read:['Read aloud','Passage with pauses','📖'],
-  talk:['Talk','Longer talk – walk if you like','🚶'], bench:['Check-in','Recorded to compare later','★'], wrap:['Wrap-up','Your score for today','✓'], game:['Game','','🎮'], roleplay:['Role-play','','🎭']};
+/* ---------- Phase 1: 28-day programme ---------- */
+let prog = Object.assign({day:1, done:{}, reps:{}, results:[], pending:null, completed:{}}, LS.get('ttp.p1',{}));
+const saveProg = () => LS.set('ttp.p1', prog);
+const STEP_INFO = {bites:['Lesson','Swipe through 3 quick cards','💡'], warm:['Warm-up','Read 2 lines clearly','🗣'], drill:['Practice','Short timed answers','⏱'], read:['Read aloud','Passage with pauses','📖'],
+  bench:['Check-in','Recorded to compare later','★'], wrap:['Wrap-up','Your score for today','✓'], game:['Game','','🎮'], roleplay:['Role-play','','🎭'], camera:['Camera round','See yourself, get body-language feedback','📷'], talk:['Talk','','🚶']};
 function plan(){ return PROGRAMME.day(Math.min(prog.day, PROGRAMME.days)); }
 function nextStepIndex(p){ return p.steps.findIndex((st,i)=>!prog.done[i]); }
 function renderToday(){
   renderLevel();
-  $('#aiNudge').innerHTML = AI.ready() ? '' : `<div class="card aicard"><h3>Turn on your AI coach (free)</h3><p>Get an exact transcript with every “uh”, “so” and “maybe”, a real score out of 100, role-play conversations and smarter games. Takes 2 minutes.</p><button class="btn" onclick="show('settings')">Set it up</button></div>`;
+  $('#aiNudge').innerHTML = AI.ready() ? '' : `<div class="card aicard"><h3>Turn on your AI coach (free)</h3><p>Exact transcript with every “uh”, “so” and “maybe”, a real score, camera feedback on your face and body language, and role-plays. Takes 2 minutes.</p><button class="btn" onclick="show('settings')">Set it up</button></div>`;
   const box=$('#todayBox');
+  const doneDays = Object.keys(prog.completed).length;
   if(prog.day > PROGRAMME.days){
-    box.innerHTML = `<div class="hero"><p class="lbl">Programme complete</p><h2>12 weeks done. Well done.</h2><p>Compare your Day 1 and Day 60 check-ins in Progress. Keep the habit with role-plays and games.</p></div>
-      <button class="btn" onclick="show('progress')">See my progress</button><button class="btn sec" id="restartProg">Start the 12 weeks again</button>`;
-    $('#restartProg').onclick=()=>{ if(confirm('Restart from Day 1? Your old sessions stay saved.')){ prog={day:1,done:{},reps:{},results:[],pending:null,completed:prog.completed}; saveProg(); renderToday(); } };
+    box.innerHTML = `<div class="hero"><p class="lbl">Phase 1 complete 🎓</p><h2>${esc(PROGRAMME.phaseName)}: done</h2><p>28 days finished. Your certificate is ready.</p></div>
+      <button class="btn" id="certBtn">View my certificate</button>
+      <div class="card" style="margin-top:14px;opacity:.85"><p class="lbl">Phase 2 · coming next</p><p style="margin:0;font-size:15px">Deeper practice: presentations, difficult conversations and leadership voice. Keep your streak with role-plays and games meanwhile.</p></div>
+      <button class="btn sec" id="restartProg">Repeat Phase 1</button>`;
+    $('#certBtn').onclick=showCertificate;
+    $('#restartProg').onclick=()=>{ if(confirm('Repeat Phase 1 from Day 1? Your old sessions stay saved.')){ prog={day:1,done:{},reps:{},results:[],pending:null,completed:{}}; saveProg(); renderToday(); } };
     return;
   }
   const p=plan(), w=p.week, ni=nextStepIndex(p);
-  const doneDays = Object.keys(prog.completed).length;
   const mins = p.steps.reduce((a,s)=>a+s.min,0);
+  const weekDays = [...Array(7)].map((_,i)=>{ const d=(w.n-1)*7+i+1; const c=prog.completed[d]; return `<div class="wd ${c?'done':d===p.day?'now':''}"><b>${d}</b><span>${c&&c.score!=null?c.score:PROGRAMME.all[d-1].icon}</span></div>`; }).join('');
   box.innerHTML = `
-    <div class="hero"><p class="lbl">Week ${w.n} · Day ${p.day} of 60 · ${esc(w.phase)}</p>
-      <h2>${esc(w.title)}</h2><p>${esc(p.focus)}</p>
-      <div class="prog"><i style="width:${Math.round(doneDays/60*100)}%"></i></div><small>${doneDays} of 60 sessions done · about ${mins} minutes today${p.checkin?' · ★ check-in day':''}</small></div>
+    <div class="hero"><p class="lbl">Phase 1 · Week ${w.n}: ${esc(w.title)}</p>
+      <h2><span style="font-size:26px">${p.info.icon}</span> Day ${p.day}: ${esc(p.title)}</h2><p>${esc(p.info.bites[1])}</p>
+      <div class="prog"><i style="width:${Math.round(doneDays/28*100)}%"></i></div><small>${doneDays} of 28 days · about ${mins} min today${p.checkin?' · ★ check-in day':''}</small></div>
+    <div class="weekstrip">${weekDays}</div>
     <div class="card steps">${p.steps.map((st,i)=>{
       const inf=STEP_INFO[st.k]; const dn=!!prog.done[i];
       let title=inf[0], sub=inf[1];
-      if(st.k==='drill') sub=(prog.reps[i]||0)+' of '+st.reps+' done · '+w.drill.name;
+      if(st.k==='drill') sub=(prog.reps[i]||0)+' of '+st.reps+' done';
       if(st.k==='bench') sub=st.prompt;
-      if(st.k==='talk') sub=st.topic;
       if(st.k==='game'){ title=GAMES[st.game].name; sub=GAMES[st.game].desc; }
-      if(st.k==='roleplay'){ const sc=C.SCENARIOS[st.scn]; title='Role-play: '+sc.title; sub=AI.ready()?sc.setup:'Needs AI coach · otherwise a talk: '+st.topic; }
+      if(st.k==='roleplay'){ const sc=st.scn==='coach'?C.COACH_CHAT:C.SCENARIOS[st.scn]; title='Role-play: '+sc.title; sub=AI.ready()?sc.setup:'Needs the AI coach · otherwise a camera round'; }
+      if(st.k==='camera') sub=st.prompt;
       return `<div class="st ${dn?'done':i===ni?'next':''}"><div class="ic">${dn?'✓':inf[2]}</div><div><b>${esc(title)}</b><small>${esc(sub)}</small></div><span class="min">${st.min} min</span></div>`; }).join('')}</div>
-    <button class="btn" id="goBtn">${ni<=0 && !Object.keys(prog.done).length ? 'Start today’s session' : 'Continue'}</button>
-    <p class="note" style="text-align:center;padding-top:10px">Practise at the same time each day. Missed a day? Just carry on.</p>`;
+    <button class="btn" id="goBtn">${ni<=0 && !Object.keys(prog.done).length ? 'Start Day '+p.day : 'Continue'}</button>
+    <div class="card" style="margin-top:14px;opacity:.8"><p class="lbl">🔒 Phase 2</p><p style="margin:0;font-size:14px">Unlocks after Day 28.</p></div>`;
   $('#goBtn').onclick=runNext;
 }
 function runNext(){ const p=plan(); const i=nextStepIndex(p); if(i<0){ show('today'); return; } runStep(i); }
 function prepScreen(title, body, startLabel, onStart, onSkip){
   const el=$('#result');
-  el.innerHTML = `<div class="rhead"><div><h2>${esc(title)}</h2><p>Week ${plan().week.n} · Day ${plan().day}</p></div></div><main>${body}
+  el.innerHTML = `<div class="rhead"><div><h2>${esc(title)}</h2><p>Day ${plan().day} · ${esc(plan().title)}</p></div></div><main>${body}
     <button class="btn" id="prepGo">${startLabel}</button><button class="btn sec" id="prepBack">Back to Today</button>${onSkip?'<button class="skip" id="prepSkip">Skip this step</button>':''}<div style="height:30px"></div></main>`;
   el.classList.add('on'); el.scrollTop=0;
   $('#prepGo').onclick=()=>{ el.classList.remove('on'); onStart(); };
   $('#prepBack').onclick=()=>{ el.classList.remove('on'); show('today'); };
   if(onSkip) $('#prepSkip').onclick=()=>{ onSkip(); el.classList.remove('on'); runNext(); };
 }
+function camToggle(def){ return `<div class="camtog" id="camTog" data-on="${def?1:0}"><span>📷 Camera</span><b>${def?'On':'Off'}</b></div>`; }
+function wireCamToggle(){ const t=$('#camTog'); if(!t) return; t.onclick=()=>{ const on=t.dataset.on!=='1'; t.dataset.on=on?1:0; t.querySelector('b').textContent=on?'On':'Off'; }; }
+const camOn = () => { const t=$('#camTog'); return t ? t.dataset.on==='1' : false; };
+/* story-style lesson cards */
+function showBites(i){
+  const p=plan(), x=p.info;
+  const cards=[
+    {h:'Day '+p.day, big:x.icon+' '+x.t, txt:x.bites[0]},
+    {h:'The move', big:'', txt:x.bites[1]},
+    {h:'Remember', big:'', txt:x.bites[2]},
+    {h:'Hear the difference', ex:true},
+    {h:'Say it out loud', say:x.say}
+  ];
+  let k=0; const el=$('#bites');
+  const draw=()=>{
+    const c=cards[k];
+    el.innerHTML = `<div class="bars">${cards.map((_,j)=>`<i class="${j<k?'f':j===k?'a':''}"></i>`).join('')}</div>
+      <button class="bx" id="biteX">✕</button>
+      <div class="bcard"><p class="bh">${esc(c.h)}</p>
+      ${c.big?`<div class="bbig">${esc(c.big)}</div>`:''}
+      ${c.txt?`<div class="btxt">${esc(c.txt)}</div>`:''}
+      ${c.ex?`<div class="bex no">✕ ${esc(x.no)}</div><div class="bex yes">✓ ${esc(x.yes)}</div><button class="bspk" id="biteHear">🔊 Hear the good version</button>`:''}
+      ${c.say?`<div class="bsay">“${esc(c.say)}”</div><button class="bspk" id="biteHear2">🔊 Hear it</button><p class="btxt" style="font-size:16px;opacity:.75">Say it out loud 3 times: slow, clear, with a small smile.</p>`:''}
+      </div>
+      <div class="bnav"><button class="bprev" id="bPrev">‹</button><button class="bnext" id="bNext">${k===cards.length-1?'Start practice →':'Next ›'}</button></div>`;
+    $('#biteX').onclick=()=>{ stopSpeak(); el.classList.remove('on'); show('today'); };
+    $('#bPrev').onclick=()=>{ if(k>0){k--;draw();} };
+    $('#bNext').onclick=()=>{ if(k<cards.length-1){k++;draw();} else { stopSpeak(); el.classList.remove('on'); prog.done[i]=true; saveProg(); runNext(); } };
+    const h=$('#biteHear'); if(h) h.onclick=()=>speak(x.yes.replace(/[()]/g,' '));
+    const h2=$('#biteHear2'); if(h2) h2.onclick=()=>speak(x.say);
+  };
+  el.classList.add('on'); draw();
+}
 function runStep(i){
-  const p=plan(), st=p.steps[i], w=p.week, d=w.drill;
+  const p=plan(), st=p.steps[i], x=p.info;
   const skip=()=>{ prog.done[i]=true; saveProg(); };
   const ctx={step:i};
-  if(st.k==='lesson'){
-    const el=$('#result');
-    el.innerHTML = `<div class="rhead"><div><h2>${esc(w.title)}</h2><p>Week ${w.n} · ${esc(w.phase)}</p></div></div><main>
-      <div class="card lesson tipcard"><p class="lbl">Why it matters</p><p>${esc(w.why)}</p><p class="lbl" style="margin-top:14px">The rule</p><div class="rule">${esc(w.rule)}</div>
-      <div class="ex"><div class="no">✕ ${esc(w.no)}</div><div class="yes">✓ ${esc(w.yes)}</div></div><button class="spk" id="hearRule" style="margin-top:10px">🔊 Hear the good example</button></div>
-      <div class="tip"><p class="lbl">Today’s focus</p>${esc(p.focus)}</div>
-      <button class="btn" id="lesGo">Got it · Next →</button><button class="btn sec" id="lesBack">Back to Today</button><div style="height:30px"></div></main>`;
-    el.classList.add('on'); el.scrollTop=0;
-    $('#hearRule').onclick=()=>speak(w.yes.replace(/[\/*()]/g,' '));
-    $('#lesGo').onclick=()=>{ prog.done[i]=true; saveProg(); el.classList.remove('on'); runNext(); };
-    $('#lesBack').onclick=()=>{ el.classList.remove('on'); show('today'); };
-    return;
-  }
+  const focus = p.title+': '+x.bites[1];
+  if(st.k==='bites') return showBites(i);
   if(st.k==='wrap') return showWrap(i);
-  if(st.k==='game') return startGame(st.game, ctx);
+  if(st.k==='game'){ let g=st.game; if(!SR && (g==='fighter'||g==='taboo')) g='squeeze'; if(SR || AI.ready()) return startGame(g, ctx); }
   if(st.k==='roleplay' && AI.ready()){
-    const sc=C.SCENARIOS[st.scn];
+    const sc = st.scn==='coach' ? C.COACH_CHAT : C.SCENARIOS[st.scn];
     return prepScreen('Role-play: '+sc.title, `<div class="card"><div class="row"><div class="av" style="background:${sc.color}">${sc.av}</div><div><b style="color:var(--navy)">${esc(sc.who)}</b><div style="font-size:14px;color:var(--mut)">${esc(sc.setup)}</div></div></div></div>
-      <div class="tip"><p class="lbl">Use this week’s skill</p>${esc(w.rule)}</div><p class="note" style="padding:0 4px 12px">They speak first. Tap “Answer” to reply. About ${sc.turns} replies, then you get a scorecard.</p>`,
+      <div class="tip"><p class="lbl">Use today’s skill</p>${esc(x.bites[1])}</div><p class="note" style="padding:0 4px 12px">They speak first. Hands-free: answer out loud, it replies when you stop. Scorecard at the end.</p>`,
       'Start conversation', ()=>startRoleplay(st.scn, ctx), skip);
   }
   if(st.k==='warm' || st.k==='read'){
     const isWarm=st.k==='warm', text = isWarm ? st.lines.join(' / ') : st.text;
-    prepScreen(isWarm?'Warm-up · read aloud':'Read the passage'+(st.bench?' · check-in':''),
-      `<div class="card"><p class="lbl">${isWarm?'Read these lines clearly':'Read slowly. Pause at each │. Stress the bold words.'}</p>${renderTarget(text,[])}<button class="spk" id="hearIt" style="margin-top:8px">🔊 Hear it first</button></div>
-       <div class="tip"><p class="lbl">How</p>${isWarm?'Open your mouth more than usual. Finish the last sound of every word.':'Steady pace, about 120–150 words a minute.'} ${AI.ready()?'Your coach will point out any unclear words.':'Words turn green when the phone hears them clearly.'}</div>`,
+    prepScreen(isWarm?'Warm-up · read aloud':'Read the passage · check-in',
+      `<div class="card"><p class="lbl">${isWarm?'Read these lines clearly':'Read slowly. Pause at each │.'}</p>${renderTarget(text,[])}<button class="spk" id="hearIt" style="margin-top:8px">🔊 Hear it first</button></div>
+       <div class="tip"><p class="lbl">How</p>Open your mouth a little more than usual. Finish the last sound of every word.</div>`,
       'Start reading', ()=>runTalk({kind:'read', target:text, prompt:isWarm?'Warm-up lines':'Read-aloud passage', targetSec:0, bench:st.bench||'', ctx, stepK:st.k}), skip);
     $('#hearIt').onclick=()=>speak(text.replace(/[\/*]/g,' '),{rate:.9});
     return;
   }
-  let promptTxt, sec, structure, starter, label, hidden=false, maxWords=0, task='';
-  if(st.k==='drill'){ const r=prog.reps[i]||0; promptTxt=st.prompts[r % st.prompts.length]; sec=d.sec; structure=d.structure; starter=d.starters[r % d.starters.length]; hidden=!!d.hidden; maxWords=d.maxWords||0; label=d.name+' drill '+(r+1)+' of '+st.reps; ctx.rep=r; task=d.name+' drill'; }
-  else if(st.k==='bench'){ promptTxt=st.prompt; sec=st.sec; structure=st.structure; starter=''; label='Check-in · '+(st.bench==='update'?'update':'answer'); task='Benchmark recording for progress tracking'; }
-  else { promptTxt=st.topic; sec=st.sec; structure=['Point first','Short sentences','Pause, don’t fill']; starter=''; label='Talk · '+Math.round(sec/60)+' minutes'; task='Longer free talk'; }
-  const body = `<div class="card"><p class="lbl">${sec?sec>=120?Math.round(sec/60)+' minutes':sec+' seconds':''}${maxWords?' · '+maxWords+' words max':''}</p>
-    <div class="prompt">${hidden?'The question is hidden. It appears when you tap Start.':esc(promptTxt)}</div>
-    <div class="chips">${structure.map(x=>`<span class="chip">${esc(x)}</span>`).join('')}</div>
-    ${starter?`<div class="starter">Start with: <b>“${esc(starter)}”</b></div>`:''}</div>
-    <div class="tip"><p class="lbl">Today’s focus</p>${esc(p.focus)}</div>
-    ${st.k==='talk'||st.k==='roleplay'?'<p class="note" style="padding:0 4px 12px">Good one to do while walking. Use Pocket mode once you start.</p>':''}
-    ${st.k==='bench'?'<p class="note" style="padding:0 4px 12px">Speak naturally. This recording is saved so you can compare it at Day 20, 40 and 60.</p>':''}`;
-  prepScreen(label, body, 'Start', async ()=>{ if(hidden) await countdown(promptTxt,3); runTalk({kind:'talk', drill:'prog', prompt:promptTxt, targetSec:sec, maxWords, hidden, structure, focus:w.title+': '+w.rule, task, bench:st.bench||'', ctx, stepK:st.k}); }, st.k==='bench'?null:skip);
+  let q;
+  if(st.k==='drill'){ const r=prog.reps[i]||0; const pr=st.prompts[r % st.prompts.length]; ctx.rep=r;
+    q={label:'Practice '+(r+1)+' of '+st.reps, prompt:pr.p, sec:pr.sec, maxWords:pr.maxWords||0, structure:pr.s||[], hidden:!!pr.hidden, cam: pr.cam!=null ? (pr.cam && settings.camera) : settings.camera, task:'Practice drill'}; }
+  else if(st.k==='bench'){ q={label:'Check-in · '+(st.bench==='intro'?'introduction':'update'), prompt:st.prompt, sec:st.sec, structure:st.structure, cam:true, task:'Benchmark recording for progress tracking'}; }
+  else if(st.k==='camera' || st.k==='roleplay' || st.k==='game'){ q={label:'Camera round', prompt:st.prompt || ('On camera: '+x.say+' Then talk for 45 seconds about how you would use today’s skill at work.'), sec:st.sec||45, structure:['Look at the lens','Point first','Smile'], cam:true, task:'Camera round: judge both words and visible presence'}; }
+  if(!AI.ready() && (st.k==='drill' || st.k==='bench')) q.cam=false;   // basic mode counts words live, which can't share the mic with the camera
+  const body = `<div class="card"><p class="lbl">${q.sec?q.sec+' seconds':''}${q.maxWords?' · '+q.maxWords+' words max':''}</p>
+    <div class="prompt">${q.hidden?'The question is hidden. It appears when you tap Start.':esc(q.prompt)}</div>
+    <div class="chips">${q.structure.map(t=>`<span class="chip">${esc(t)}</span>`).join('')}</div>
+    <div class="starter">Today’s line: <b>“${esc(x.say)}”</b></div></div>
+    ${camToggle(q.cam)}
+    <div class="tip"><p class="lbl">Today’s skill</p>${esc(x.bites[1])}</div>
+    ${st.k==='bench'?'<p class="note" style="padding:0 4px 12px">Speak naturally. This is saved so you can compare Day 1, Day 14 and Day 28.</p>':''}`;
+  prepScreen(q.label, body, 'Start', async ()=>{ const cam=camOn(); if(q.hidden) await countdown(q.prompt,3);
+    runTalk({kind:'talk', drill:'prog', prompt:q.prompt, targetSec:q.sec, maxWords:q.maxWords, hidden:q.hidden, structure:q.structure, focus, skillTitle:p.title, task:q.task, bench:st.bench||'', camera:cam, ctx, stepK:st.k}); }, st.k==='bench'?null:skip);
+  wireCamToggle();
 }
 function commitStep(s){
   const p=plan(), i=s.ctx.step, st=p.steps[i];
@@ -1060,34 +1165,70 @@ function daySummary(ids){
   const ss = ids.map(id=>sessions.find(x=>x.id===id)).filter(Boolean);
   const talks = ss.filter(s=>(s.kind==='talk'||s.kind==='roleplay') && s.m && s.m.score!=null), reads = ss.filter(s=>s.kind==='read' && s.m && s.m.score!=null);
   const avg = a => a.length ? Math.round(a.reduce((x,y)=>x+y,0)/a.length) : null;
+  const avg1 = a => a.length ? Math.round(a.reduce((x,y)=>x+y,0)/a.length*10)/10 : null;
   const totF = talks.reduce((a,s)=>a+s.m.fillerCount+s.m.softenerCount,0), totMin = talks.reduce((a,s)=>a+s.dur,0)/60;
   const tf={}; talks.forEach(s=>s.m.fillers.concat(s.m.softeners).forEach(([w,n])=>tf[w]=(tf[w]||0)+n));
   const top = Object.entries(tf).sort((a,b)=>b[1]-a[1])[0];
   const tips = talks.map(s=>s.ai&&s.ai.next_step).filter(Boolean);
-  return {score:avg(talks.map(s=>s.m.score)), clarity:avg(reads.map(s=>s.m.score)), fpm: totMin? +(totF/Math.max(totMin,.25)).toFixed(1) : null, top: top?top[0]:null, n:ss.length, tip: tips[tips.length-1]||''};
+  return {score:avg(talks.map(s=>s.m.score)), clarity:avg(reads.map(s=>s.m.score)), fpm: totMin? +(totF/Math.max(totMin,.25)).toFixed(1) : null,
+    skill:avg1(talks.map(s=>s.m.skill).filter(x=>x)), presence:avg1(talks.map(s=>s.m.presence).filter(x=>x)), top: top?top[0]:null, n:ss.length, tip: tips[tips.length-1]||''};
 }
 function showWrap(i){
   const p=plan(), sum=daySummary(prog.results), el=$('#result');
   const prev = prog.completed[p.day-1];
   const line = sum.tip || (sum.top ? 'Your main filler today was “'+sum.top+'”. Tomorrow, pause instead of saying it.' : 'Keep sentences short and land your endings.');
-  el.innerHTML = `<div class="rhead">${ring(sum.score)}<div><h2>Day ${p.day} complete</h2><p>${esc(p.week.title)}</p></div></div><main>
+  el.innerHTML = `<div class="rhead">${ring(sum.score)}<div><h2>Day ${p.day} complete ${p.info.icon}</h2><p>${esc(p.title)}</p></div></div><main>
     <div class="tiles">
       <div class="tile"><span>Talk score</span><b>${sum.score??'–'}</b><small>${prev&&prev.score!=null&&sum.score!=null?(sum.score>=prev.score?'▲ ':'▼ ')+Math.abs(sum.score-prev.score)+' vs last day':'average of today'}</small></div>
+      <div class="tile ${sum.skill>=8?'ok':''}"><span>Today’s skill</span><b>${sum.skill??'–'}</b><small>applied, out of 10</small></div>
       <div class="tile ${sum.fpm>4?'bad':sum.fpm!=null&&sum.fpm<=2?'ok':''}"><span>Fillers / min</span><b>${sum.fpm??'–'}</b><small>incl. weak words · target ≤ 2</small></div>
-      <div class="tile ${sum.clarity>=85?'ok':''}"><span>Reading</span><b>${sum.clarity??'–'}</b><small>clarity score</small></div>
-      <div class="tile"><span>Recordings</span><b>${sum.n}</b><small>today</small></div>
+      <div class="tile ${sum.presence>=8?'ok':''}"><span>On camera</span><b>${sum.presence??'–'}</b><small>presence, out of 10</small></div>
     </div>
     <div class="tip"><p class="lbl">Tomorrow</p>${esc(line)}</div>
-    ${p.checkin?'<div class="card"><p class="lbl">Check-in saved</p><p style="margin:0;font-size:15px">See your check-ins side by side in Progress.</p></div>':''}
     <button class="btn" id="finishDay">Finish Day ${p.day} <span class="xpchip">+30 XP</span></button><div style="height:30px"></div></main>`;
   el.classList.add('on'); el.scrollTop=0;
   $('#finishDay').onclick=()=>{
-    prog.completed[p.day]={ts:Date.now(), score:sum.score, fpm:sum.fpm, clarity:sum.clarity, ids:prog.results.slice()};
+    prog.completed[p.day]={ts:Date.now(), score:sum.score, fpm:sum.fpm, clarity:sum.clarity, skill:sum.skill, presence:sum.presence, ids:prog.results.slice()};
     const d=p.day; prog.day++; prog.done={}; prog.reps={}; prog.results=[]; prog.pending=null; saveProg();
     el.classList.remove('on'); addXP(30,'Day '+d+' complete');
-    if(d===5) award('week1'); if(d===30) award('half'); if(d===60) award('grad');
+    if(d===7) award('week1'); if(d===14) award('half');
+    if(d===28){ award('grad'); setTimeout(showCertificate, 600); }
     show('today');
   };
+}
+/* ---------- certificate ---------- */
+async function showCertificate(){
+  if(!settings.name){ const n=window.prompt('Your name for the certificate:'); if(!n) return; settings.name=n.trim(); saveSettings(); const ni=$('#nameIn'); if(ni) ni.value=settings.name; }
+  const c=prog.completed, first=c[1]||{}, last=c[28]||c[Math.max(...Object.keys(c).map(Number).concat([1]))]||{};
+  const cv=document.createElement('canvas'); cv.width=1600; cv.height=1130; const g=cv.getContext('2d');
+  g.fillStyle='#F7F5EF'; g.fillRect(0,0,1600,1130);
+  g.strokeStyle='#13203A'; g.lineWidth=18; g.strokeRect(40,40,1520,1050);
+  g.strokeStyle='#C9A54E'; g.lineWidth=3; g.strokeRect(72,72,1456,986);
+  try{ const im=new Image(); im.src='icon-512.png'; await im.decode(); g.save(); g.beginPath(); g.arc(800,190,70,0,Math.PI*2); g.clip(); g.drawImage(im,730,120,140,140); g.restore(); }catch(e){}
+  g.textAlign='center'; g.fillStyle='#13203A';
+  g.font='600 30px Georgia, serif'; g.fillText('S A Y   S H A R P', 800, 310);
+  g.font='700 72px Georgia, serif'; g.fillText('Certificate of Completion', 800, 410);
+  g.fillStyle='#6A778C'; g.font='italic 32px Georgia, serif'; g.fillText('This certifies that', 800, 490);
+  g.fillStyle='#13203A'; g.font='700 84px Georgia, serif'; g.fillText(settings.name||'Speaker', 800, 600);
+  g.strokeStyle='#C9A54E'; g.lineWidth=2; g.beginPath(); g.moveTo(450,630); g.lineTo(1150,630); g.stroke();
+  g.fillStyle='#3A475C'; g.font='34px Georgia, serif'; g.fillText('has completed Phase 1: Speak Sharp in 28 Days', 800, 700);
+  g.font='28px Georgia, serif';
+  const stats=[]; if(first.score!=null&&last.score!=null) stats.push('Talk score '+first.score+' → '+last.score);
+  if(first.fpm!=null&&last.fpm!=null) stats.push('Fillers per minute '+first.fpm+' → '+last.fpm);
+  stats.push(Object.keys(c).length+' practice days');
+  g.fillText(stats.join('   ·   '), 800, 770);
+  g.font='26px Georgia, serif'; g.fillStyle='#6A778C';
+  g.fillText(new Date().toLocaleDateString(undefined,{day:'numeric',month:'long',year:'numeric'}), 800, 900);
+  g.fillText('Openers · Weak words · Fillers · Pressure · Conversation · Executive presence', 800, 960);
+  const url=cv.toDataURL('image/png');
+  const el=$('#result');
+  el.innerHTML=`<div class="rhead"><div class="av" style="background:#fff;font-size:26px">🎓</div><div><h2>Your certificate</h2><p>${esc(PROGRAMME.phaseName)}</p></div></div><main>
+    <img src="${url}" style="width:100%;border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,.15)">
+    <button class="btn" id="certDl" style="margin-top:14px">⬇ Save image</button>${navigator.share?'<button class="btn sec" id="certShare">Share</button>':''}<button class="btn sec" id="certClose">Close</button><div style="height:30px"></div></main>`;
+  el.classList.add('on'); el.scrollTop=0;
+  $('#certDl').onclick=()=>{ const a=document.createElement('a'); a.href=url; a.download='say-sharp-certificate.png'; a.click(); };
+  const sh=$('#certShare'); if(sh) sh.onclick=async()=>{ try{ const b=await (await fetch(url)).blob(); await navigator.share({files:[new File([b],'say-sharp-certificate.png',{type:'image/png'})], title:'Say Sharp certificate'}); }catch(e){} };
+  $('#certClose').onclick=closeResult;
 }
 
 /* ---------- progress ---------- */
@@ -1100,14 +1241,15 @@ function renderProgress(){
     $('#profile').innerHTML = dimBars(avg).replace(/<b>(\d+)<\/b>/g,(m,v)=>m) + `<p class="note" style="padding:8px 0 0">Weakest area: <b>${({fluency:'Flow',clarity:'Clarity',conciseness:'Getting to the point',structure:'Structure',relevance:'Answering the question',confidence:'Confidence',grammar:'Grammar'})[Object.entries(avg).sort((a,b)=>a[1]-b[1])[0][0]]}</b></p>`;
   } else $('#profile').innerHTML = '<div class="empty">'+(AI.ready()?'Do a session to build your profile.':'Turn on the AI coach to see this.')+'</div>';
   const done=Object.keys(prog.completed).length;
-  $('#gridLbl').textContent='12-week programme · '+done+' of 60 days';
-  $('#grid60').innerHTML=[...Array(60)].map((_,k)=>{const d=k+1; return `<i class="${prog.completed[d]?'d':d===prog.day?'t':''} ${PROGRAMME.checkinDays.includes(d)?'c':''}"></i>`;}).join('');
+  $('#gridLbl').textContent='Phase 1 · '+done+' of 28 days';
+  $('#grid60').innerHTML=[...Array(28)].map((_,k)=>{const d=k+1; return `<i class="${prog.completed[d]?'d':d===prog.day?'t':''} ${PROGRAMME.checkinDays.includes(d)?'c':''}"></i>`;}).join('');
   const rows = PROGRAMME.checkinDays.map(d=>{
     const ss=sessions.filter(s=>s.day===d && s.bench); if(!ss.length) return '';
-    const up=ss.find(s=>s.bench==='update'), an=ss.find(s=>s.bench==='answer'), rd=ss.find(s=>s.bench==='passage');
+    const up=ss.find(s=>s.bench==='update'), an=ss.find(s=>s.bench==='intro'||s.bench==='answer'), rd=ss.find(s=>s.bench==='passage');
     return `<tr class="click" data-id="${(up||an||rd).id}"><td><b>Day ${d}</b></td><td>${up&&up.m.score!=null?up.m.score:'–'}</td><td>${up?up.m.fillerPerMin:'–'}</td><td>${an&&an.m.score!=null?an.m.score:'–'}</td><td>${rd&&rd.m.score!=null?rd.m.score:'–'}</td></tr>`;
   }).join('');
-  $('#checkins').innerHTML = rows ? `<table class="ck"><tr><th></th><th>Update</th><th>Fillers/min</th><th>Answer</th><th>Reading</th></tr>${rows}</table><p class="note" style="padding:8px 0 0">Tap a row to open that day’s recording.</p>` : '<div class="empty">Your Day 1 check-in will show here.</div>';
+  $('#checkins').innerHTML = rows ? `<table class="ck"><tr><th></th><th>Update</th><th>Fillers/min</th><th>Intro</th><th>Reading</th></tr>${rows}</table><p class="note" style="padding:8px 0 0">Tap a row to open that day’s recording.</p>` : '<div class="empty">Your Day 1 check-in will show here.</div>';
+  if(prog.day>PROGRAMME.days) $('#checkins').insertAdjacentHTML('beforeend','<button class="btn" style="margin-top:12px" onclick="showCertificate()">🎓 View my certificate</button>');
   $('#checkins').querySelectorAll('tr.click').forEach(r=>r.onclick=()=>{ const s=sessions.find(x=>x.id===r.dataset.id); if(s) openResult(s); });
   const pts = scored.slice(0,20).reverse().map(s=>+(((s.m.fillerCount||0)+(s.m.softenerCount||0))/Math.max(s.dur/60,.25)).toFixed(1));
   if(pts.length<2) $('#chart').innerHTML='<div class="empty">Do 2 scored sessions to see your trend.</div>';
@@ -1149,12 +1291,14 @@ $('#aiTest').onclick=async()=>{
   const k=$('#aiKey').value.trim() || settings.aiKey;
   if(!k){ toast('Paste your key first'); return; }
   const st=$('#aiStatus'); st.className='status'; st.textContent='Connecting…';
-  settings.aiKey=k; aiConfig();
+  const btn=$('#aiTest'); btn.disabled=true; btn.style.opacity=.6;
+  settings.aiKey=k; settings.aiModel=''; settings.aiLastModel=''; aiConfig();
   try{
-    const r = await AI.test();
+    const r = await AI.test(m=>{ st.textContent=m; });
     settings.aiModels=r.models; settings.aiLastModel=r.model; saveSettings(); aiConfig(); fillModels();
     $('#aiKey').value=''; aiStatus(); toast('AI coach is ready ✓');
-  }catch(e){ settings.aiKey=''; aiConfig(); st.className='status bad'; st.textContent='✕ '+(e.user||e.message); saveSettings(); }
+  }catch(e){ settings.aiKey=''; aiConfig(); st.className='status bad'; st.textContent='✕ '+(e.user||e.message)+(e.message&&e.user&&e.user.indexOf(e.message)<0?' ('+String(e.message).slice(0,120)+')':''); saveSettings(); }
+  btn.disabled=false; btn.style.opacity=1;
 };
 $('#aiModel').onchange=e=>{ settings.aiModel=e.target.value; saveSettings(); aiConfig(); };
 $('#lang').value=settings.lang; $('#buzz').checked=settings.buzz; $('#liveCaptions').checked=settings.liveCaptions; $('#speakReplies').checked=settings.speakReplies;
@@ -1163,6 +1307,9 @@ $('#lang').onchange=e=>{settings.lang=e.target.value;saveSettings();};
 $('#buzz').onchange=e=>{settings.buzz=e.target.checked;saveSettings(); if(settings.buzz) vib(80);};
 $('#liveCaptions').onchange=e=>{settings.liveCaptions=e.target.checked;saveSettings();};
 $('#speakReplies').onchange=e=>{settings.speakReplies=e.target.checked;saveSettings();};
+$('#camDefault').checked=settings.camera; $('#nameIn').value=settings.name||'';
+$('#camDefault').onchange=e=>{settings.camera=e.target.checked;saveSettings();};
+$('#nameIn').onchange=e=>{settings.name=e.target.value.trim();saveSettings();toast('Saved');};
 $('#handsFree').checked=settings.handsFree; $('#waitMs').value=String(settings.waitMs);
 $('#handsFree').onchange=e=>{settings.handsFree=e.target.checked;saveSettings();};
 $('#waitMs').onchange=e=>{settings.waitMs=+e.target.value;saveSettings();};

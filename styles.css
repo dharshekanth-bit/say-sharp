@@ -240,3 +240,40 @@ ol.steps2 li{margin:6px 0}
 
 header h1{display:flex;align-items:center;gap:10px}
 header h1 .logo{width:30px;height:30px;border-radius:8px;flex:none}
+
+/* ---------- v5: camera, bite cards, week strip ---------- */
+#camWrap{position:relative;flex:1;margin:12px 16px 0;border-radius:18px;overflow:hidden;background:#000;min-height:0}
+#camView{width:100%;height:100%;object-fit:cover;transform:scaleX(-1);display:block}
+#camPrompt{position:absolute;left:0;right:0;bottom:0;padding:16px 16px 18px;color:#fff;font-size:18px;font-weight:650;line-height:1.3;background:linear-gradient(transparent,rgba(0,0,0,.75))}
+.camtip{position:absolute;top:10px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.45);color:#fff;font-size:12px;padding:4px 10px;border-radius:99px;white-space:nowrap}
+#recorder.cam #live{flex:0 0 auto;max-height:22vh}
+#recorder.cam .counter{display:none!important}
+.camtog{display:inline-flex;align-items:center;gap:10px;background:#fff;border:1.5px solid var(--line);border-radius:99px;padding:8px 14px;cursor:pointer;font-size:15px;margin-bottom:14px}
+.camtog b{color:var(--mut)}
+.camtog[data-on="1"]{border-color:var(--navy)}
+.camtog[data-on="1"] b{color:var(--green)}
+.weekstrip{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:14px}
+.wd{background:#fff;border-radius:12px;padding:8px 0;text-align:center;font-size:12px;color:var(--mut)}
+.wd b{display:block;font-size:14px;color:var(--navy)}
+.wd span{font-size:15px}
+.wd.done{background:#DFF1EA}.wd.done span{font-weight:800;color:var(--green);font-size:13px}
+.wd.now{background:var(--navy)}.wd.now b,.wd.now span{color:#fff}
+.grid60{grid-template-columns:repeat(7,1fr)}
+#bites{position:fixed;inset:0;z-index:28;display:none;flex-direction:column;background:linear-gradient(160deg,#1F3A66 0%,#0E1A30 70%);color:#fff;padding:calc(14px + env(safe-area-inset-top)) 20px calc(20px + env(safe-area-inset-bottom))}
+#bites.on{display:flex}
+#bites .bars{display:flex;gap:5px}
+#bites .bars i{flex:1;height:4px;border-radius:2px;background:rgba(255,255,255,.25)}
+#bites .bars i.f{background:#fff}#bites .bars i.a{background:#9FC3FF}
+#bites .bx{position:absolute;top:calc(26px + env(safe-area-inset-top));right:16px;background:none;border:0;color:#fff;font-size:22px;cursor:pointer}
+#bites .bcard{flex:1;display:flex;flex-direction:column;justify-content:center;max-width:520px;margin:0 auto;width:100%}
+#bites .bh{font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:#9FC3FF;font-weight:700;margin:0 0 14px}
+#bites .bbig{font-size:34px;font-weight:800;line-height:1.15;margin-bottom:18px}
+#bites .btxt{font-size:23px;line-height:1.4;font-weight:500}
+#bites .bex{border-radius:14px;padding:14px;font-size:18px;line-height:1.4;margin-bottom:10px}
+#bites .bex.no{background:rgba(200,70,61,.25);color:#FFD5D1}
+#bites .bex.yes{background:rgba(46,139,106,.3);color:#D2F5E6;font-weight:600}
+#bites .bsay{font-size:30px;font-weight:800;line-height:1.25;margin-bottom:16px;color:#fff}
+#bites .bspk{align-self:flex-start;background:rgba(255,255,255,.12);border:0;color:#fff;border-radius:99px;padding:10px 16px;font:600 15px system-ui;cursor:pointer;margin-bottom:12px}
+#bites .bnav{display:flex;gap:10px}
+#bites .bprev{flex:0 0 60px;background:rgba(255,255,255,.12);border:0;color:#fff;border-radius:14px;font-size:24px;cursor:pointer}
+#bites .bnext{flex:1;background:#fff;color:var(--navy);border:0;border-radius:14px;padding:15px;font:700 17px system-ui;cursor:pointer}

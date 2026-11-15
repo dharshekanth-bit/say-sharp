@@ -4,6 +4,18 @@ window.AI = (function () {
   var BASE = 'https://generativelanguage.googleapis.com';
   var cfg = { key: '', model: '', models: [] };
   function setConfig(c) { for (var k in c) cfg[k] = c[k]; }
+  // fetch with a time limit so nothing can hang forever
+  function fetchT(url, opts, ms) {
+    var ctl = window.AbortController ? new AbortController() : null;
+    var t = ctl ? setTimeout(function () { ctl.abort(); }, ms || 60000) : null;
+    var o = Object.assign({}, opts || {}); if (ctl) o.signal = ctl.signal;
+    return fetch(url, o).then(function (r) { clearTimeout(t); return r; }, function (e) {
+      clearTimeout(t);
+      var err = new Error(e && e.name === 'AbortError' ? 'timeout' : 'network');
+      err.user = e && e.name === 'AbortError' ? 'The AI took too long to answer. Check your internet and try again.' : 'No internet connection. The AI coach needs internet.';
+      err.net = true; throw err;
+    });
+  }
   function ready() { return !!cfg.key; }
 
   /* ---------- schema helpers (Gemini response_schema, OpenAPI subset) ---------- */
@@ -44,17 +56,17 @@ window.AI = (function () {
     }
   }
   async function uploadFile(blob) {
-    var start = await fetch(BASE + '/upload/v1beta/files', { method: 'POST', headers: {
+    var start = await fetchT(BASE + '/upload/v1beta/files', { method: 'POST', headers: {
       'x-goog-api-key': cfg.key, 'X-Goog-Upload-Protocol': 'resumable', 'X-Goog-Upload-Command': 'start',
       'X-Goog-Upload-Header-Content-Length': String(blob.size), 'X-Goog-Upload-Header-Content-Type': blob.type, 'Content-Type': 'application/json' },
       body: JSON.stringify({ file: { display_name: 'talk-' + Date.now() } }) });
     var url = start.headers.get('x-goog-upload-url');
     if (!start.ok || !url) throw new Error('upload start failed');
-    var up = await fetch(url, { method: 'POST', headers: { 'X-Goog-Upload-Offset': '0', 'X-Goog-Upload-Command': 'upload, finalize' }, body: blob });
+    var up = await fetchT(url, { method: 'POST', headers: { 'X-Goog-Upload-Offset': '0', 'X-Goog-Upload-Command': 'upload, finalize' }, body: blob });
     var info = await up.json(); var f = info.file;
     for (var t = 0; t < 20 && f.state === 'PROCESSING'; t++) {
       await new Promise(function (r) { setTimeout(r, 1500); });
-      f = await (await fetch(BASE + '/v1beta/' + f.name, { headers: { 'x-goog-api-key': cfg.key } })).json();
+      f = await (await fetchT(BASE + '/v1beta/' + f.name, { headers: { 'x-goog-api-key': cfg.key } })).json();
     }
     if (f.state === 'FAILED') throw new Error('upload processing failed');
     return f;
@@ -62,7 +74,10 @@ window.AI = (function () {
 
   /* ---------- models ---------- */
   function rankModels(names) {
-    var c = names.map(function (n) { return n.replace(/^models\//, ''); })
+    var all = names.map(function (n) { return n.replace(/^models\//, ''); });
+    var bad = /(tts|image|live|audio|thinking|exp|robotics|computer|embed|aqa|veo|imagen|lyria|gemma|learnlm)/;
+    var latest = all.filter(function (n) { return /^gemini-flash-latest$/.test(n); }).concat(all.filter(function (n) { return /^gemini-flash-lite-latest$/.test(n); }));
+    var c = all
       .filter(function (n) { return /^gemini-\d+(\.\d+)?-flash(-lite)?(-preview[-\w]*)?$/.test(n) && !/(tts|image|live|audio|thinking|exp|robotics|computer)/.test(n); });
     function ver(n) { return parseFloat(n.match(/^gemini-(\d+(?:\.\d+)?)/)[1]); }
     c.sort(function (a, b) {
@@ -70,10 +85,12 @@ window.AI = (function () {
       var pa = /preview/.test(a), pb = /preview/.test(b); if (pa !== pb) return pa ? 1 : -1;
       return ver(b) - ver(a);
     });
-    return c;
+    var out = latest.length ? [latest[0]].concat(c).concat(latest.slice(1)) : c;
+    if (!out.length) out = all.filter(function (n) { return /^gemini/.test(n) && !bad.test(n) && !/pro/.test(n); });
+    return out.filter(function (n, i) { return out.indexOf(n) === i; });
   }
   async function discover() {
-    var r = await fetch(BASE + '/v1beta/models?pageSize=200', { headers: { 'x-goog-api-key': cfg.key } });
+    var r = await fetchT(BASE + '/v1beta/models?pageSize=200', { headers: { 'x-goog-api-key': cfg.key } }, 20000);
     var j = await r.json().catch(function () { return {}; });
     if (!r.ok) throw friendly(r.status, j);
     var names = (j.models || []).filter(function (m) { return (m.supportedGenerationMethods || []).indexOf('generateContent') >= 0; }).map(function (m) { return m.name; });
@@ -99,6 +116,30 @@ window.AI = (function () {
     return e;
   }
 
+  /* ---------- fallback when Google rejects the answer format ---------- */
+  function skeleton(sc) {
+    if (!sc) return '';
+    if (sc.type === 'OBJECT') { var o = {}; for (var k in sc.properties) o[k] = skeleton(sc.properties[k]); return o; }
+    if (sc.type === 'ARRAY') return [skeleton(sc.items)];
+    if (sc.type === 'INTEGER') return '<whole number' + (sc.description ? ': ' + sc.description : '') + '>';
+    if (sc.type === 'BOOLEAN') return '<true or false>';
+    return '<text' + (sc.description ? ': ' + sc.description : '') + '>';
+  }
+  function withHint(contents, schema) {
+    var c = contents.slice(), last = Object.assign({}, c[c.length - 1]);
+    last.parts = last.parts.concat([{ text: 'Reply with ONLY a JSON object, no other text, in exactly this shape (replace each <...> with a real value):\n' + JSON.stringify(skeleton(schema)) }]);
+    c[c.length - 1] = last; return c;
+  }
+  function coerce(v, sc) {
+    if (!sc) return v;
+    if (sc.type === 'ARRAY') return Array.isArray(v) ? v.map(function (x) { return coerce(x, sc.items); }) : [];
+    if (v == null) return v;
+    if (sc.type === 'OBJECT') { if (typeof v !== 'object') return undefined; for (var k in sc.properties) v[k] = coerce(v[k], sc.properties[k]); return v; }
+    if (sc.type === 'INTEGER') { var n = parseInt(v, 10); return isNaN(n) ? undefined : n; }
+    if (sc.type === 'BOOLEAN') return v === true || v === 'true';
+    return String(v);
+  }
+
   /* ---------- core call ---------- */
   async function call(opts) {
     if (!cfg.key) { var e0 = new Error('no key'); e0.user = 'Add your free AI key in Settings to use the AI coach.'; throw e0; }
@@ -106,28 +147,37 @@ window.AI = (function () {
     for (var mi = 0; mi < models.length; mi++) {
       var model = models[mi];
       var gen = { temperature: opts.temperature == null ? 0.4 : opts.temperature, max_output_tokens: opts.maxTokens || 8192 };
-      if (opts.schema) { gen.response_mime_type = 'application/json'; gen.response_schema = opts.schema; }
+      var fellBack = false;
+      if (opts.schema) { gen.response_mime_type = 'application/json'; if (!cfg.noSchema) gen.response_schema = opts.schema; }
       var withThinking = /^gemini-2\.5-flash/.test(model) && opts.fast;
       if (withThinking) gen.thinking_config = { thinking_budget: 0 };
-      var body = { contents: opts.contents, generation_config: gen };
+      var body = { contents: (opts.schema && cfg.noSchema) ? withHint(opts.contents, opts.schema) : opts.contents, generation_config: gen };
       if (opts.system) body.system_instruction = { parts: [{ text: opts.system }] };
-      for (var attempt = 0; attempt < 2; attempt++) {
+      for (var attempt = 0; attempt < 3; attempt++) {
         var r, j;
         try {
-          r = await fetch(BASE + '/v1beta/models/' + model + ':generateContent', { method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'x-goog-api-key': cfg.key }, body: JSON.stringify(body) });
+          if (cfg.onTry) cfg.onTry(model);
+          r = await fetchT(BASE + '/v1beta/models/' + model + ':generateContent', { method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-goog-api-key': cfg.key }, body: JSON.stringify(body) }, opts.timeout || 120000);
           j = await r.json().catch(function () { return {}; });
-        } catch (netErr) { lastErr = new Error('network'); lastErr.user = 'No internet connection. The AI coach needs internet.'; break; }
+        } catch (netErr) { lastErr = netErr; if (netErr.message === 'timeout') break; throw netErr; }
         if (r.ok) {
           var cand = j.candidates && j.candidates[0];
           var text = cand && cand.content && cand.content.parts ? cand.content.parts.map(function (p) { return p.text || ''; }).join('') : '';
+          if (!text && opts.allowEmpty) { if (cfg.onModel) cfg.onModel(model); return { text: '', model: model }; }
           if (!text) { lastErr = new Error('empty'); lastErr.user = 'The AI returned nothing (' + ((cand && cand.finishReason) || (j.promptFeedback && j.promptFeedback.blockReason) || 'unknown') + '). Try again.'; break; }
-          if (!opts.schema) return { text: text, model: model };
-          try { var data = JSON.parse(text.replace(/^```(json)?|```$/g, '').trim()); data._model = model; if (cfg.onModel) cfg.onModel(model); return data; }
+          if (!opts.schema) { if (cfg.onModel) cfg.onModel(model); return { text: text, model: model }; }
+          try {
+            var t2 = text.replace(/^```(json)?|```$/g, '').trim(), a0 = t2.indexOf('{'), b0 = t2.lastIndexOf('}');
+            if (a0 >= 0 && b0 > a0) t2 = t2.slice(a0, b0 + 1);
+            var data = coerce(JSON.parse(t2), opts.schema); data._model = model;
+            if (fellBack) cfg.noSchema = true;
+            if (cfg.onModel) cfg.onModel(model); return data; }
           catch (pe) { lastErr = new Error('parse'); lastErr.user = 'The AI reply was cut off. Try a shorter recording.'; break; }
         }
         lastErr = friendly(r.status, j);
         if (r.status === 400 && gen.thinking_config) { delete gen.thinking_config; continue; }
+        if (r.status === 400 && gen.response_schema && !/api key/i.test(lastErr.message)) { delete gen.response_schema; body.contents = withHint(opts.contents, opts.schema); fellBack = true; continue; }
         if (r.status === 503 && attempt === 0) { await new Promise(function (x) { setTimeout(x, 1500); }); continue; }
         break;
       }
@@ -138,11 +188,15 @@ window.AI = (function () {
     throw lastErr || new Error('AI failed');
   }
 
-  async function test() {
+  async function test(onStep) {
+    if (onStep) onStep('Checking your key…');
     var models = await discover();
     cfg.models = models;
-    var r = await call({ contents: [{ role: 'user', parts: [{ text: 'Reply with the single word: ready' }] }], fast: true, maxTokens: 20 });
-    return { models: models, model: r.model };
+    var prevTry = cfg.onTry; cfg.onTry = function (m) { if (onStep) onStep('Testing ' + m + '…'); };
+    try {
+      var r = await call({ contents: [{ role: 'user', parts: [{ text: 'Reply with the single word: ready' }] }], fast: true, maxTokens: 1024, allowEmpty: true, timeout: 30000 });
+      return { models: models, model: r.model };
+    } finally { cfg.onTry = prevTry; }
   }
 
   /* ---------- prompts ---------- */
@@ -184,8 +238,20 @@ window.AI = (function () {
     strengths: S.arr(S.str(), '1-2 specific things done well'),
     fixes: S.arr(fixSchema, 'the 2-3 most important fixes, most important first'),
     better_version: S.str('how a sharp, confident speaker would say the same content: same facts, point first, about half the words, natural spoken English'),
+    skill_check: S.obj({ score: S.int('1-10: how well they applied the specific skill being practised (if one is given), otherwise overall effectiveness'), note: S.str('what they did or missed for that skill, max 20 words') }),
     next_step: S.str('one concrete thing to do differently next time, max 20 words')
   });
+  var PRESENCE_SCHEMA = S.obj({
+    eye_contact: S.int('1-10: looking at the camera lens most of the time, not down or away'),
+    expression: S.int('1-10: natural, engaged, friendly face; smiles where right; not frozen, tense or flat'),
+    posture: S.int('1-10: upright, steady, open; not slumped, swaying or too close/far'),
+    energy: S.int('1-10: looks alert and confident; visible energy that matches the message'),
+    notes: S.str('what you SAW in the frames, 1-2 short sentences, specific'),
+    habits: S.arr(S.str(), 'visible habits that weaken presence, e.g. looking down, touching face, fidgeting, frozen face, head tilt, reading notes. Empty if none.'),
+    best: S.str('one thing that looked confident, max 15 words')
+  });
+  var TALK_VIDEO_SCHEMA = JSON.parse(JSON.stringify(TALK_SCHEMA));
+  TALK_VIDEO_SCHEMA.properties.presence = PRESENCE_SCHEMA; TALK_VIDEO_SCHEMA.required.push('presence');
 
   function ctxText(o) {
     var t = [];
@@ -198,12 +264,20 @@ window.AI = (function () {
     return t.join('\n');
   }
 
-  async function analyseTalk(pcm, o) {
+  async function analyseTalk(pcm, o, frames) {
     var part = await audioPart(pcm);
+    var hasVid = frames && frames.length;
     var prompt = ctxText(o) + '\n\nListen to the recording.\n1. ' + VERBATIM +
       '\n2. Score each area from 1 to 10 (be strict and realistic; 10 is rare, 7 is good).\n3. List real grammar mistakes exactly as spoken with corrections, and any unclear or wrongly stressed words.\n4. Give feedback as specified.' +
-      (o.dur < 8 ? '\nThe recording is very short; score it, but say so in the headline.' : '');
-    return call({ system: COACH, schema: TALK_SCHEMA, contents: [{ role: 'user', parts: [{ text: prompt }, part] }], maxTokens: 12000 });
+      (o.dur < 8 ? '\nThe recording is very short; score it, but say so in the headline.' : '') +
+      '\nAlso score how well they applied the skill being practised (skill_check).' +
+      (hasVid ? '\n5. You also get low-resolution still frames from the front camera taken during the talk (the image is mirrored like a selfie). Judge visible presence: eye contact with the lens, facial expression, posture and energy. Image quality is low on purpose; do not comment on lighting or camera quality unless the face cannot be seen.' : '');
+    var parts = [{ text: prompt }, part];
+    if (hasVid) {
+      parts.push({ text: 'Camera frames in time order (' + frames.length + ' frames):' });
+      frames.forEach(function (f) { parts.push({ text: 'at ' + f.t + 's' }); parts.push({ inline_data: { mime_type: 'image/jpeg', data: f.data } }); });
+    }
+    return call({ system: COACH, schema: hasVid ? TALK_VIDEO_SCHEMA : TALK_SCHEMA, contents: [{ role: 'user', parts: parts }], maxTokens: 12000, timeout: 150000 });
   }
 
   var READ_SCHEMA = S.obj({
@@ -243,7 +317,7 @@ window.AI = (function () {
       '\nAlso act as a silent coach: give a short private coaching note, the most important grammar fix and pronunciation fix (empty strings if none), and scores for the latest reply.';
     var conv = history.map(function (h) { return (h.who === 'them' ? scn.who + ': ' : 'User: ') + h.text; }).join('\n');
     var prompt = 'Scenario: ' + scn.setup + '\n\nConversation so far:\n' + conv + '\n\nNow listen to the user’s latest reply. ' + VERBATIM + '\nThen give your next line in character.';
-    return call({ system: sys, schema: TURN_SCHEMA, fast: true, temperature: 0.8, contents: [{ role: 'user', parts: [{ text: prompt }, part] }] });
+    return call({ system: sys, schema: TURN_SCHEMA, fast: true, temperature: 0.8, timeout: 60000, contents: [{ role: 'user', parts: [{ text: prompt }, part] }] });
   }
 
   var RP_FINAL_SCHEMA = S.obj({

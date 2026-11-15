@@ -35,6 +35,7 @@
     <div class="big">
       <button class="rec" id="startPractise" aria-label="Start"><svg viewBox="0 0 24 24" fill="#fff"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0" stroke="#fff" stroke-width="2" fill="none"/><path d="M12 18v3" stroke="#fff" stroke-width="2"/></svg></button>
       <p>Take 3 seconds to think. Then tap and speak.</p>
+      <div class="camtog" id="pCam" data-on="1" style="margin-top:12px"><span>📷 Camera</span><b>On</b></div>
     </div>
     <div class="card">
       <p class="lbl">Walk &amp; talk</p>
@@ -84,7 +85,7 @@
       <div class="status" id="aiStatus"></div>
       <label class="set" for="aiModel">AI model</label>
       <select id="aiModel"><option value="">Automatic (recommended)</option></select>
-      <p class="note" style="padding:8px 0 0">Your key stays on this phone only. On Google’s free plan, recordings may be used by Google to improve its products, so avoid sharing confidential client details.</p>
+      <p class="note" style="padding:8px 0 0">Your key stays on this phone only. Your voice recordings and small camera snapshots are sent to Google for feedback. On Google’s free plan, Google may use them to improve its products, so avoid confidential client details.</p>
     </div>
     <div class="card">
       <p class="lbl">Speech</p>
@@ -97,7 +98,10 @@
       </select>
       <div class="switch" style="margin-top:10px"><span>Buzz when I say a filler (live mode)</span><input type="checkbox" id="buzz"></div>
       <div class="switch"><span>Show live text while AI coach records<br><small style="color:var(--mut)">Off is more reliable on Android</small></span><input type="checkbox" id="liveCaptions"></div>
-      <div class="switch"><span>Conversations: speak replies out loud</span><input type="checkbox" id="speakReplies"></div>
+      <div class="switch"><span>Use camera in practice by default<br><small style="color:var(--mut)">See yourself and get body-language feedback</small></span><input type="checkbox" id="camDefault"></div>
+      <label class="set" for="nameIn">Your name (for the certificate)</label>
+      <input id="nameIn" type="text" placeholder="e.g. Dharshekanth" style="width:100%;font:15px system-ui;padding:10px;border:1px solid var(--line);border-radius:10px">
+      <div class="switch" style="margin-top:10px"><span>Conversations: speak replies out loud</span><input type="checkbox" id="speakReplies"></div>
       <div class="switch"><span>Hands-free conversations<br><small style="color:var(--mut)">Listens after it speaks, replies when you stop</small></span><input type="checkbox" id="handsFree"></div>
       <label class="set" for="waitMs">Wait before replying (after you stop talking)</label>
       <select id="waitMs"><option value="1400">Short – 1.4 seconds</option><option value="2000">Normal – 2 seconds</option><option value="3000">Long – 3 seconds (time to think)</option></select>
@@ -141,6 +145,7 @@
     <div id="cF"><b id="nF">0</b><span>Fillers</span></div>
     <div><b id="nW">0</b><span>Words</span></div>
   </div>
+  <div id="camWrap" style="display:none"><video id="camView" autoplay muted playsinline></video><div id="camPrompt"></div><div class="camtip">Look at the lens · small smile</div></div>
   <div id="gameTop" style="display:none"><div class="bigtimer" id="bigT">0</div><div class="banned" id="bannedBox"></div></div>
   <div id="live"></div>
   <div class="wave" id="wave"></div>
@@ -161,6 +166,7 @@
 </div>
 
 <div id="result"></div>
+<div id="bites"></div>
 <div class="countdown" id="countdown"><div class="q" id="cdQ"></div><div class="n" id="cdN">3</div></div>
 <div class="pop" id="pop"><div class="box" id="popBox"></div></div>
 <div class="toast" id="toast"></div>

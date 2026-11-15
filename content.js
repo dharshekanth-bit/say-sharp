@@ -135,15 +135,17 @@ window.CONTENT = (function () {
     {id:'streak7', icon:'🔥', name:'Week warrior', desc:'7-day streak'},
     {id:'streak14', icon:'🏅', name:'Habit formed', desc:'14-day streak'},
     {id:'rp1', icon:'🎭', name:'Actor', desc:'Finish a role-play'},
+    {id:'cam1', icon:'📷', name:'On camera', desc:'Finish a camera session'},
+    {id:'presence8', icon:'😎', name:'Presence', desc:'Score 8+ on camera presence'},
     {id:'rp5', icon:'🎬', name:'Seasoned', desc:'Finish 5 role-plays'},
     {id:'ceo', icon:'💼', name:'CEO ready', desc:'Score 80+ in the CEO role-play'},
     {id:'fighter60', icon:'🥊', name:'Survivor', desc:'Last 60 seconds in Filler Fighter'},
     {id:'taboo', icon:'🚫', name:'Taboo master', desc:'Win a Taboo round'},
     {id:'rapid40', icon:'⚡', name:'Quick thinker', desc:'40+ points in Rapid Fire'},
     {id:'squeeze', icon:'🍋', name:'Squeezer', desc:'Score 9+ in Squeeze It'},
-    {id:'week1', icon:'📅', name:'Week one', desc:'Finish week 1 of the programme'},
-    {id:'half', icon:'⛰', name:'Halfway', desc:'Finish day 30'},
-    {id:'grad', icon:'🎓', name:'Graduate', desc:'Finish all 60 days'}
+    {id:'week1', icon:'📅', name:'Week one', desc:'Finish week 1 of Phase 1'},
+    {id:'half', icon:'⛰', name:'Halfway', desc:'Finish day 14'},
+    {id:'grad', icon:'🎓', name:'Graduate', desc:'Finish all 28 days'}
   ];
 
   return {DRILLS:DRILLS, WALK_TOPICS:WALK_TOPICS, TIPS:TIPS, SCENARIOS:SCENARIOS, COACH_CHAT:COACH_CHAT, CUSTOM_SCENARIO:CUSTOM_SCENARIO,

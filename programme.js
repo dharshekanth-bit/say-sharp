@@ -1,290 +1,380 @@
-/* Say Sharp — 12-week programme (60 weekday sessions, ~30 min each) */
+/* Say Sharp — Phase 1: Speak Sharp in 28 Days (about 12–15 minutes a day) */
 window.PROGRAMME = (function () {
   'use strict';
 
-  // Read-aloud warm-up lines: clear consonants, word endings, tricky work words (no numbers)
   var WARM = [
     'Red lorry, yellow lorry, red lorry, yellow lorry.',
     'The reconciliation was completed thoroughly and on time.',
-    'She sells sea shells on the sea shore.',
     'Please review the attached statements before Thursday.',
     'Particularly in February, the figures fluctuate significantly.',
     'Unique New York, unique New York, you know you need unique New York.',
     'We specifically asked for the supporting documents.',
-    'The sixth sick sheikh’s sixth sheep is sick.',
     'Our superannuation obligations were met in full.',
     'A proper copper coffee pot.',
     'Comfortable clients come back for consistent service.',
-    'The entrepreneur explained the strategy clearly and calmly.',
     'Fresh fried fish, fish fresh fried, fried fish fresh.',
     'Accurate accounts build trust with every stakeholder.',
     'Betty bought a bit of better butter.',
     'The auditor asked about the accruals and the adjustments.',
     'Truly rural, truly rural, truly rural.',
-    'We will prioritise the outstanding payroll queries first.',
-    'Three free throws, three free throws.',
     'The variance was caused by a timing difference.',
     'Six slippery snails slid slowly seaward.',
     'I would appreciate your approval by the end of the week.',
     'Clear words, calm voice, complete sentences.',
-    'The statistics were presented at the strategy meeting.',
     'Lesser leather never weathered wetter weather better.',
-    'Each entity has its own payroll calendar and deadlines.',
-    'Kind kittens knit knotted knickers.',
     'The client confirmed the change in writing yesterday.',
-    'How can a clam cram in a clean cream can?',
-    'Our responsibility is to deliver reliable reports.',
     'Six thick thistle sticks.',
     'The deadline is tight, but the plan is realistic.',
-    'Good blood, bad blood, good blood, bad blood.',
     'Let me walk you through the main findings.',
-    'A big black bug bit a big black bear.',
-    'The process improvement saved the team several hours each month.',
     'Strategic decisions require accurate, timely information.',
-    'Which witch wished which wicked wish?',
     'I recommend we finalise the figures before the review.',
-    'Clean clams crammed in clean cans.',
-    'The management accounts are ready for your review.',
-    'Rolling red wagons rattled down the road.',
     'Thank you for raising that. Here is what we will do.',
-    'The quick brown fox jumps over the lazy dog.',
-    'Payroll, bookkeeping and tax lodgements are all on track.'
+    'Payroll, bookkeeping and tax lodgements are all on track.',
+    'Rolling red wagons rattled down the road.'
   ];
 
-  // One read-aloud passage per week. "/" = pause. *word* = stress it.
-  var BENCH_PASSAGE = 'Good morning everyone. / Here is a quick update on this month. / Payroll has been processed for every entity, / and all lodgements were submitted on time. / We found one issue in the client reports, / and it has already been fixed. / Next week, / we will start the review of the new client files. / I need one decision from you: / whether we hire one more person this quarter. / Thank you.';
-
-  var W = [
-    { n: 1, phase: 'Clean speech', title: 'Know your fillers',
-      why: 'Fillers are your brain buying time. You can’t fix what you don’t notice. This week, every buzz is just information.',
-      rule: 'Notice your fillers. Don’t fight them yet.',
-      no: 'So, uh, actually, basically what happened was…', yes: 'What happened was…',
-      focus: ['Check-in day. Speak naturally so we get a true starting point.',
-        'Count your buzzes. Which filler comes most?',
-        'Notice when fillers appear: at the start, or between ideas?',
-        'Speak a little slower than normal. Notice what changes.',
-        'Look back at your week. Pick the one filler you will attack first.'],
-      drill: { name: 'Answer', sec: 45, structure: ['Answer', 'Reason', 'Example'], starters: ['My answer is this.', 'Two things.', 'Here is what I think.'],
-        prompts: ['What did you work on yesterday?', 'What is the best part of your job?', 'What is one thing you would change at work?', 'Describe your team in 45 seconds.', 'What made this week busy?', 'What is a skill you are proud of?', 'How do you plan your day?', 'What is a common mistake new staff make?', 'Describe a client you enjoy working with.', 'What are you learning in your MBA right now?'] },
-      passage: 'Every morning, / I plan the day in five minutes. / First, / I check what is due today. / Then, / I pick the one task that matters most. / I do that task before I open my email. / It sounds simple, / but it changes the whole day. / The urgent work still gets done, / and the important work gets done first.',
-      talk: ['Recap your day so far. Notice every filler.', 'Explain what you do at work to a friend.', 'Talk about a recent decision and why you made it.', 'Describe how you would train a new team member.', 'Talk about your goals for the next three months.'] },
-
-    { n: 2, phase: 'Clean speech', title: 'Pause instead of a filler',
-      why: 'A pause feels long to you but sounds calm to others. Silence makes you look sure. A filler makes you look unsure.',
-      rule: 'When a filler comes, close your mouth, breathe, then continue.',
-      no: 'Uh, so, the next point is, um…', yes: '(pause) The next point is…',
-      focus: ['Pause for one full second at the end of every sentence.',
-        'Before you start, breathe in. Start on the out-breath. No “so”.',
-        'When you lose your thread, stop. Silence is allowed.',
-        'Try to finish a full answer with zero buzzes.',
-        'Pause before your most important point.'],
-      drill: { name: 'Answer', sec: 45, structure: ['Breathe', 'Answer', 'Pause', 'Reason'], starters: ['(breathe) The answer is…', '(breathe) Simply put…'],
-        prompts: ['Why did you choose finance as a career?', 'What do you do when you are stuck on a problem?', 'How do you handle a busy month-end?', 'What makes a good manager?', 'How do you check your work for mistakes?', 'What would your team say about you?', 'What is the hardest part of payroll?', 'How do you deal with a difficult email?', 'What does a good week look like for you?', 'How do you prepare for an important call?'] },
-      passage: 'When I feel a filler coming, / I stop. / I close my mouth. / I take a small breath. / Then I say the next word. / At first, / the silence feels long. / But the listener does not hear a problem. / They hear someone who is thinking. / They hear someone who is in control. / A pause is not a mistake. / A pause is a tool.',
-      talk: ['Explain your weekend plans, pausing instead of filling.', 'Talk about a book, show or film you liked.', 'Describe your ideal working day.', 'Talk about a time you solved a problem at work.', 'Explain how BAS or payroll works to someone new.'] },
-
-    { n: 3, phase: 'Clean speech', title: 'Start with the point',
-      why: 'Busy people decide in the first ten seconds if you are worth listening to. Give them the answer first. Background only if they ask.',
-      rule: 'Your first sentence is the answer or the headline.',
-      no: 'So, actually, last week the client sent the file, and then we had some issues, and…', yes: 'The BAS will be two days late. The client sent the file late.',
-      focus: ['Say the answer in your first sentence, every time.',
-        'Use a starter line: “Short answer:” then the point.',
-        'Stop after the point. Add detail only if it is needed.',
-        'Test: could someone stop listening after sentence one and still know the answer?',
-        'Mix it up: one-line answers and short updates, all point-first.'],
-      drill: { name: 'One line', sec: 20, maxWords: 25, structure: ['One sentence', 'Answer first', 'Then stop'], starters: ['Short answer:', 'Bottom line:', 'In one line:'],
-        prompts: ['Why is this task late?', 'Are we on track for month-end?', 'What do you need from me?', 'What is the main risk this month?', 'Should we take on this new client?', 'What did the client decide?', 'What is your recommendation?', 'Why did the numbers change?', 'Is the report ready?', 'What is blocking you?', 'What went well this week?', 'What is the next step?'] },
-      passage: 'Here is the short answer. / Yes, / we can finish by Friday. / There is one condition. / We need the bank statements by Wednesday. / If they arrive late, / the deadline moves by one day. / I will send a reminder to the client today. / That is all you need to know for now. / I can share the detail if you want it.',
-      talk: ['Give three point-first answers about your week.', 'Explain one problem at work: point first, then reason.', 'Talk about a recent news story: headline first.', 'Recommend a place to visit: answer first, then why.', 'Describe a change you want at work: point first.'] },
-
-    { n: 4, phase: 'Clean speech', title: 'Say it once, one idea per sentence',
-      why: 'Repeating a point does not make it stronger. It makes it weaker. Long chains of “and… and… so…” lose people.',
-      rule: 'One idea, one sentence. Say it once, then move on.',
-      no: 'The payroll is done… yes so the payroll is all done, it’s done and then we…', yes: 'Payroll is done. Next is the review.',
-      focus: ['Full stop after every idea. No “and then… and then…”.',
-        'Watch the Repeats box. Aim for zero.',
-        'Count your points on your fingers. One finger, one sentence.',
-        'Say each point once. If you repeat it, stop and move on.',
-        'Check-in day. Compare with Day 1.'],
-      drill: { name: 'Explain', sec: 60, structure: ['Point 1', 'Point 2', 'Point 3', 'Stop'], starters: ['Three points.', 'There are two steps.', 'Here is how it works.'],
-        prompts: ['Explain how you process a payroll run.', 'Explain how you check a BAS before lodging.', 'Explain how you onboard a new client.', 'Explain how you prepare a monthly report.', 'Explain how you handle a client query.', 'Explain how you review a junior’s work.', 'Explain how you plan a busy week.', 'Explain how you prepare for an interview.', 'Explain how you reconcile a bank account.', 'Explain how you train a new staff member.'] },
-      passage: 'There are three steps. / First, / we collect the documents. / Second, / we check them against last month. / Third, / we send the report for review. / Each step has one owner. / Each step has one deadline. / When a step is late, / we flag it on the same day. / That is the whole process.',
-      talk: ['Explain a process you know well, one idea per sentence.', 'Tell a short story from work in five sentences.', 'Talk about your MBA: what, why, and what next.', 'Explain your career so far in short sentences.', 'Check-in talk: your week, short and clean.'] },
-
-    { n: 5, phase: 'Structure', title: 'Updates: Headline · Done · Next · Need',
-      why: 'A good update answers four questions before anyone asks. Where are we? What is done? What is next? What do you need?',
-      rule: 'Headline, done, next, need. One or two sentences each.',
-      no: 'So basically we did a lot of things this week, like, we had the meeting and…', yes: 'We are on track. Payroll is done. The review is Friday. I need approval by Thursday.',
-      focus: ['Use all four parts: headline, done, next, need.',
-        'Your headline is one line: on track, at risk, or late.',
-        '“Need” can be “nothing needed”. Say it anyway.',
-        'Keep each update under 60 seconds.',
-        'Give the same update twice. Make the second one shorter.'],
-      drill: { name: 'Update', sec: 60, structure: ['Headline', 'Done', 'Next', 'Need'], starters: ['Quick update, three points.', 'The headline is: we are on track.', 'Short version: one risk, one ask.'],
-        prompts: ['Give your manager an update on your week.', 'Update a client on a task that is running late.', 'Update the CEO on a new client you are onboarding.', 'Give a status update on this month’s payroll runs.', 'Update your team on a process change.', 'Report the status of BAS lodgements this month.', 'Update your manager on the hiring you are running.', 'Update a client on missing documents.', 'Give an update on a problem you found in a report.', 'Update your manager on a team member’s progress.'] },
-      passage: 'Quick update. / We are on track. / This week, / all payroll runs were completed, / and two new clients were set up. / Next week, / we will finish the quarterly review. / One risk: / a client has not sent their documents. / I need your help to follow up with them. / That is the update.',
-      talk: ['Give a full weekly update, out loud, as if to your manager.', 'Update an imaginary client on their account.', 'Give an update on your MBA progress.', 'Give an update on a personal goal.', 'Give the same work update in 60, then 30 seconds.'] },
-
-    { n: 6, phase: 'Structure', title: 'Answers: Point · Reason · Example · Point',
-      why: 'In interviews and meetings, a structured answer sounds prepared even when it isn’t. PREP gives you a path so you don’t wander.',
-      rule: 'Point, reason, example, then the point again in one line.',
-      no: 'Well, that’s a good question, I think, I mean, there are many things…', yes: 'My biggest strength is improving reports. For example, I redesigned our capacity report. Leaders now decide faster.',
-      focus: ['Start with your point. No “that’s a good question”.',
-        'Give one example only. Make it real and specific.',
-        'Finish by repeating your point in one short line.',
-        'Keep interview answers under 60 seconds.',
-        'Answer the hardest prompts twice. Tighter the second time.'],
-      drill: { name: 'Answer', sec: 60, structure: ['Point', 'Reason', 'Example', 'Point'], starters: ['My answer is…', 'The short answer is…', 'I would say…'],
-        prompts: ['Tell me about yourself.', 'What is your biggest strength?', 'Why should we hire you?', 'Tell me about a process you improved.', 'How do you handle a missed deadline?', 'Describe a time you led a team through change.', 'What is your biggest weakness?', 'Why are you looking for a new role?', 'How do you manage stakeholders?', 'Where do you see yourself in three years?', 'Tell me about a mistake you made.', 'How do you handle pressure?'] },
-      passage: 'My main strength is making reports useful. / The reason is simple. / Leaders do not need more numbers. / They need clear decisions. / For example, / I redesigned our capacity report. / It now shows the risk on one page. / The leadership team uses it every month. / So my strength is turning data into decisions.',
-      talk: ['Answer “Tell me about yourself” three different ways.', 'Talk through your proudest work achievement using PREP.', 'Explain why you chose your MBA using PREP.', 'Answer “Why should we hire you?” for your dream job.', 'Answer a tough question you fear in interviews.'] },
-
-    { n: 7, phase: 'Structure', title: 'Explain it simply',
-      why: 'If you can explain it to someone outside finance, you really understand it. Simple is not basic. Simple is clear.',
-      rule: 'What it is. Why it matters. One example.',
-      no: 'So basically the GST component gets reconciled against the BAS liability and then…', yes: 'BAS is a tax report we send every quarter. It matters because late reports mean fines. For example…',
-      focus: ['Imagine you are explaining to a friend who is not in finance.',
-        'No jargon. If you use a term, explain it in five words.',
-        'Use one everyday example.',
-        'Check: what it is, why it matters, one example.',
-        'Explain the same thing in 90, then 45 seconds.'],
-      drill: { name: 'Explain', sec: 90, structure: ['What it is', 'Why it matters', 'Example'], starters: ['In simple words,', 'Think of it like this.', 'Here is what it means.'],
-        prompts: ['Explain what a BAS is.', 'Explain what payroll tax is.', 'Explain what a reconciliation is.', 'Explain what cash flow means.', 'Explain what an accrual is.', 'Explain what a budget variance is.', 'Explain what superannuation is.', 'Explain what a balance sheet shows.', 'Explain what outsourcing accounting means.', 'Explain what an audit is.'] },
-      passage: 'A reconciliation is a simple check. / It makes sure two records agree. / Think of your bank app / and your own list of spending. / If they match, / you are fine. / If they do not match, / something is missing / or something is wrong. / In business, / we do this every month, / so nobody gets a surprise later.',
-      talk: ['Explain your job to a ten-year-old.', 'Explain a finance idea to a friend, with one example.', 'Explain your company’s services simply.', 'Explain a news topic simply.', 'Explain something you learned in your MBA simply.'] },
-
-    { n: 8, phase: 'Structure', title: 'Meeting moments: issue · impact · ask',
-      why: 'The moments that build your reputation are short: raising a problem, asking for help, disagreeing politely. Each needs a clear shape.',
-      rule: 'Issue, impact, ask. Calm, short, specific.',
-      no: 'Sorry, I just wanted to maybe mention, if that’s okay, there might be a small issue…', yes: 'One issue: the client files are late. That risks the deadline. Can we follow up today?',
-      focus: ['Drop “sorry, just, maybe”. Say the issue plainly.',
-        'Always say the impact. Why should they care?',
-        'End with a clear ask or a clear next step.',
-        'Disagree politely: “I see it differently, here is why.”',
-        'Check-in day. Compare with Days 1 and 20.'],
-      drill: { name: 'Meeting', sec: 45, structure: ['Issue', 'Impact', 'Ask'], starters: ['One issue to flag.', 'I see it differently. Here is why.', 'I need one thing.'],
-        prompts: ['Raise an issue: a client keeps sending files late.', 'Ask your manager for one more team member.', 'Disagree politely with a deadline you think is unrealistic.', 'Ask a colleague to fix an error in their work.', 'Push back on extra work when your team is full.', 'Ask for a decision that has been delayed.', 'Raise a risk in a meeting with senior leaders.', 'Ask the CEO for approval on a new process.', 'Tell a client their request is out of scope.', 'Ask for feedback on your performance.'] },
-      passage: 'I want to raise one issue. / The client documents are arriving late every month. / The impact is clear. / We work overtime, / and the risk of mistakes goes up. / My suggestion is simple. / We set a firm cut-off date / and share it with the client in writing. / Can we agree on that today?',
-      talk: ['Practise raising a real issue you have at work.', 'Practise asking for something you want.', 'Practise disagreeing with an idea politely.', 'Practise saying no to a request, kindly and clearly.', 'Check-in talk: your week, structured.'] },
-
-    { n: 9, phase: 'Voice', title: 'Clear words, steady pace',
-      why: 'People trust a voice they can follow. Clear word endings and a steady pace make you sound calm and senior.',
-      rule: 'Finish every word. Slow down by ten percent.',
-      no: 'Rushing: wegotthereportdoneandsentit', yes: 'We got the report done. / And sent it.',
-      focus: ['Finish the last sound of each word: “report-T”, “sent-T”.',
-        'Aim for 120–150 words per minute. Check your pace.',
-        'Open your mouth more. Clear vowels, clear words.',
-        'Slow down most on names, numbers and key points.',
-        'Read the passage three times. Beat your clarity score.'],
-      drill: { name: 'One line', sec: 30, maxWords: 35, structure: ['Slow', 'Clear endings', 'Full stop'], starters: ['Let me be clear.', 'Simply put:'],
-        prompts: ['State today’s top priority clearly.', 'Tell a client their report is ready.', 'Introduce yourself to a new client.', 'Thank a colleague for their help.', 'State the deadline and what you need.', 'Summarise a meeting in two sentences.', 'Welcome a new team member.', 'Confirm the next steps after a call.', 'State one result you achieved this month.', 'Close a meeting clearly.'] },
-      passage: 'Thank you all for joining today. / I will be brief. / The project is complete, / the client is satisfied, / and the final invoice has been sent. / I want to thank the team / for their effort and their patience. / Particularly the reviewers, / who checked every detail thoroughly. / Well done, everyone.',
-      talk: ['Talk slowly and clearly about your day.', 'Introduce yourself as if to a new client.', 'Describe your hometown, finishing every word.', 'Explain your weekly routine at a steady pace.', 'Give a short thank-you speech to your team.'] },
-
-    { n: 10, phase: 'Voice', title: 'Pause and stress for impact',
-      why: 'A pause before a key point makes people lean in. Stressing the right word tells them what matters.',
-      rule: 'Pause before the key point. Stress one word per sentence.',
-      no: 'Flat: we saved time and money and the client is happy', yes: 'We saved *time*. / We saved *money*. / And the client is *happy*.',
-      focus: ['Pause before your most important word.',
-        'Stress one word per sentence. Bold words in the passage show where.',
-        'Lower your voice at the end of a sentence. Rising sounds unsure.',
-        'Use a pause after a question, before you answer.',
-        'Deliver your update like a short speech. Land the ending.'],
-      drill: { name: 'Update', sec: 60, structure: ['Headline', 'Pause', 'Key point', 'Land it'], starters: ['The headline is… (pause) good news.', 'One thing matters this week.'],
-        prompts: ['Announce a good result to your team.', 'Tell the CEO about a risk.', 'Share a win with a client.', 'Present a recommendation to your manager.', 'Open a team meeting with energy.', 'Close a presentation with one strong line.', 'Share bad news calmly with a client.', 'Present this month’s key number and what it means.', 'Motivate your team before a busy month-end.', 'Summarise a project’s success.'] },
-      passage: 'This month, / we did something *different*. / Instead of working *harder*, / we worked *smarter*. / We changed *one* step in the process. / The result? / We saved *ten hours* a week. / That is *time* back for the team, / and *better* service for every client. / Small changes. / *Big* results.',
-      talk: ['Give a two-minute team talk with pauses for impact.', 'Tell a story with a pause before the ending.', 'Present a recommendation, stressing the key words.', 'Give a short speech for a company event.', 'Share your proudest achievement with impact.'] },
-
-    { n: 11, phase: 'Pressure', title: 'Think on your feet',
-      why: 'Surprise questions are where fillers come back. A simple frame gives you a path in two seconds.',
-      rule: 'Pause. Pick a frame. Point first.',
-      no: 'Uh, that’s, um, a big question, so, I mean…', yes: '(pause) Two things. First… Second…',
-      focus: ['The prompt is hidden until you tap Start. Pause two seconds, then go.',
-        'Use the “Two things” frame: First… Second…',
-        'Use “Past, present, future” for open questions.',
-        'Don’t apologise for thinking. Just pause.',
-        'Mix all frames. Answer every surprise point-first.'],
-      drill: { name: 'Surprise', sec: 60, hidden: true, structure: ['Pause', 'Point', 'Reason', 'Example'], starters: ['Two things.', 'Good question. In short…', 'Past, present, future.'],
-        prompts: ['What would you do if you were CEO for a day?', 'What is the biggest challenge in your industry?', 'How would you cut costs by ten percent?', 'What advice would you give your younger self?', 'How will AI change accounting?', 'What makes a team succeed?', 'What would you improve about your city?', 'What is the most important skill for a leader?', 'Why do projects fail?', 'How do you build trust with a new client?', 'What did you learn from your biggest failure?', 'What is one thing most people get wrong about finance?'] },
-      passage: 'When someone asks a hard question, / I do not rush. / I pause. / I think of two points. / Then I answer the first one, / clearly and briefly. / Then the second. / If I do not know the answer, / I say so, / and I tell them when I will find out. / Honest and calm / beats fast and confused.',
-      talk: ['Talk for three minutes on a surprise topic: tap a random prompt.', 'Answer five quick-fire questions from the prompt list.', 'Talk about a topic you know nothing about, calmly.', 'Explain your view on a current work issue.', 'Free talk: whatever comes up, point-first.'] },
-
-    { n: 12, phase: 'Pressure', title: 'Pushback and presence',
-      why: 'When someone challenges you, a calm, structured answer shows leadership. Don’t defend. Acknowledge, answer, move forward.',
-      rule: 'Acknowledge. Answer. Next step.',
-      no: 'No, no, actually that’s not right, so basically what happened was…', yes: 'I understand the concern. The fee rise covers the extra reporting. I can walk you through it this week.',
-      focus: ['Start by acknowledging the concern in one line.',
-        'Answer with facts, not feelings.',
-        'Always end with a clear next step.',
-        'Keep your voice low and slow when challenged.',
-        'Final check-in. Compare Day 1 with Day 60.'],
-      drill: { name: 'Pushback', sec: 45, structure: ['Acknowledge', 'Answer', 'Next step'], starters: ['I understand the concern.', 'Fair question.', 'I see why you ask.'],
-        prompts: ['Client: “Your fees went up again. Why should we pay more?”', 'CEO: “Why is this report late again?”', 'Manager: “Your team is making too many mistakes.”', 'Client: “Another firm offered us a cheaper price.”', 'Colleague: “That process change will never work.”', 'Interviewer: “You don’t have enough experience for this role.”', 'Client: “We sent the documents, you lost them.”', 'CEO: “Why do we need another hire?”', 'Manager: “Why didn’t you raise this earlier?”', 'Client: “We are not happy with the service.”'] },
-      passage: 'I understand your concern, / and it is a fair question. / The fee has increased / because the scope has grown. / We now prepare monthly reports, / not quarterly ones. / That means more work, / but also better decisions for you. / I would like to walk you through the detail. / Can we book thirty minutes this week?',
-      talk: ['Practise answering the toughest pushback you expect at work.', 'Handle three challenges in a row, calmly.', 'Give a confident update to an imaginary CEO.', 'Talk about how you have grown over these 12 weeks.', 'Final talk: your week, with everything you learned.'] }
+  var WEEKS = [
+    { n: 1, title: 'Strong starts', sub: 'Open clearly. Drop the weak words.' },
+    { n: 2, title: 'Say less, say more', sub: 'Cut fillers, over-explaining and panic.' },
+    { n: 3, title: 'Real conversations', sub: 'Small talk, questions, stories, groups.' },
+    { n: 4, title: 'Executive presence', sub: 'Updates, pushback, decisions, the final pitch.' }
   ];
 
-  var CHECKIN_DAYS = [1, 20, 40, 60];
-  var ROLEPLAY_BY_WEEK = {2:'network',3:'ceo',4:'late',5:'ceo',6:'interview',7:'newclient',8:'raise',9:'network',10:'team',11:'interview',12:'client'};
+  // Each day: title, bites (3 short cards), say (a line to say out loud), practice (2), challenge
+  // challenge: {k:'camera'|'roleplay'|'game', scn|game|prompt}
+  var D = [
+    /* ---------- Week 1: Strong starts ---------- */
+    { t: 'Open in three lines', icon: '🚪',
+      bites: ['Most people start with background. Listeners decide in seconds whether to keep listening.',
+        'Use three lines: 1) the point, 2) why it matters, 3) what you need or what happens next.',
+        'Then stop. If they want detail, they will ask.'],
+      no: 'So, um, last week we had a few issues with the client, and then the team was busy, and…',
+      yes: 'The report will be one day late. The client sent the data late. I need sign-off by Friday.',
+      say: 'Here is the short version, in three lines.',
+      practice: [{ p: 'Open a call with your manager about this week’s work. Three lines only.', sec: 30, s: ['Point', 'Why', 'Next'] },
+        { p: 'Open a meeting where you must tell the team about a new deadline.', sec: 30, s: ['Point', 'Why', 'Next'] }],
+      ch: { k: 'bench' }, checkin: true },
+    { t: 'Ask without “sorry”', icon: '🙅',
+      bites: ['“Sorry to bother you” tells people your request is a problem. It isn’t.',
+        'Replace sorry with thanks or a straight ask: “Do you have five minutes?”',
+        'Keep “sorry” for real mistakes only.'],
+      no: 'Sorry, sorry to disturb, I just wanted to ask if maybe you could…',
+      yes: 'Do you have five minutes? I need your view on the client fee.',
+      say: 'Thanks for your time. I need one decision from you.',
+      practice: [{ p: 'Ask your manager for approval on a document. No “sorry”.', sec: 20, s: ['Ask', 'Reason'] },
+        { p: 'Ask a busy colleague for help with a task.', sec: 20, s: ['Ask', 'Reason', 'When'] }],
+      ch: { k: 'game', game: 'fighter' } },
+    { t: 'Say what you think', icon: '🎯',
+      bites: ['“I think maybe we could kind of…” hides your opinion behind four soft words.',
+        'State the view, then give the reason: “I recommend X, because Y.”',
+        'You can still be polite. Polite is in the tone, not in the softeners.'],
+      no: 'I think maybe we could probably look at, kind of, changing the date?',
+      yes: 'I recommend we move the date to Friday, because the data arrives Thursday.',
+      say: 'My recommendation is clear.',
+      practice: [{ p: 'Give your recommendation on whether to take a new client who pays late.', sec: 30, s: ['Recommend', 'Because'] },
+        { p: 'Tell your manager which of two candidates you would hire, and why.', sec: 30, s: ['Recommend', 'Because'] }],
+      ch: { k: 'camera', prompt: 'On camera: recommend one change at work. Look at the lens, no softeners.', sec: 45 } },
+    { t: 'End without “does that make sense?”', icon: '❓',
+      bites: ['“Does that make sense?” sounds like you doubt your own explanation.',
+        'End with a clear, specific question instead: “Which option do you prefer?”',
+        'Or end with the next step: “I’ll send the file by 3 pm.”'],
+      no: '…so that’s the process. Does that make sense? Is that okay?',
+      yes: '…that’s the process. Which part would you like me to go deeper on?',
+      say: 'What questions do you have on the timeline?',
+      practice: [{ p: 'Explain a simple process to a new team member and end with a strong question.', sec: 45, s: ['Explain', 'Clear question'] },
+        { p: 'Explain a change in your report format and end with a next step.', sec: 45, s: ['Explain', 'Next step'] }],
+      ch: { k: 'game', game: 'squeeze' } },
+    { t: 'Introduce yourself in one line', icon: '👋',
+      bites: ['Most self-introductions are a list of jobs. People remember one clear line.',
+        'Formula: I help [who] do [what], so that [result].',
+        'Practise it until it feels natural. You will use it hundreds of times.'],
+      no: 'So I’m in finance, I mean, I’ve done many things, payroll and reports and…',
+      yes: 'I help businesses get clear, on-time numbers, so leaders can decide faster.',
+      say: 'I help leaders make faster decisions with clear numbers.',
+      practice: [{ p: 'Introduce yourself in one sentence at a business event.', sec: 15, maxWords: 25, s: ['I help', 'do what', 'so that'] },
+        { p: '“Tell me about yourself” – one line, then one example.', sec: 30, s: ['One line', 'One example'] }],
+      ch: { k: 'camera', prompt: 'On camera: introduce yourself with a smile, one line plus one example.', sec: 30 } },
+    { t: 'Problem, fix, ask', icon: '🛠',
+      bites: ['When raising an issue, people want three things fast: what is wrong, your fix, and what you need.',
+        'Problem: one sentence. Fix: one sentence. Ask: one sentence.',
+        'Coming with a fix makes you look like a leader, not a messenger.'],
+      no: 'There’s a problem with the client files, they keep coming late, it’s difficult…',
+      yes: 'Client files arrive late every month. I suggest a firm cut-off on the 5th. Can you approve it?',
+      say: 'Here is the problem, my fix, and my ask.',
+      practice: [{ p: 'Raise a problem: a team member keeps missing deadlines.', sec: 30, s: ['Problem', 'Fix', 'Ask'] },
+        { p: 'Raise a problem: a system keeps crashing during month-end.', sec: 30, s: ['Problem', 'Fix', 'Ask'] }],
+      ch: { k: 'roleplay', scn: 'late' } },
+    { t: 'Own the first ten seconds', icon: '⏱',
+      bites: ['Before your first word, people read your face, posture and voice.',
+        'Sit tall, look at the camera or the person, small smile, breathe out, then speak.',
+        'Your first sentence should be strong and slightly slower than normal.'],
+      no: '(looking down) Uh… hi… so, yeah, okay, let me start…',
+      yes: '(eye contact, smile) Good morning. Let’s start with the good news.',
+      say: 'Good morning. Let’s start with the good news.',
+      practice: [{ p: 'Open a video call with a client you are meeting for the first time.', sec: 20, s: ['Greet', 'Purpose', 'Agenda'], cam: true },
+        { p: 'Open a team meeting on a Monday morning.', sec: 20, s: ['Greet', 'Purpose', 'Agenda'], cam: true }],
+      ch: { k: 'camera', prompt: 'On camera: give a 45-second weekly update. Strong first ten seconds.', sec: 45 } },
+
+    /* ---------- Week 2: Say less, say more ---------- */
+    { t: 'Stop over-explaining', icon: '✂️',
+      bites: ['Over-explaining comes from worry that people will doubt you. It makes them doubt you more.',
+        'Give the answer and one reason. Not five.',
+        'If you catch yourself adding “and also…”, stop and ask: “Want more detail?”'],
+      no: 'It’s late because the client, and then the system, and also we had leave, and actually…',
+      yes: 'It’s late because the client data came in on Thursday. Want the detail?',
+      say: 'One reason. Then I stop.',
+      practice: [{ p: 'Your manager asks why a report changed. One reason only.', sec: 20, maxWords: 35, s: ['Answer', 'One reason'] },
+        { p: 'A client asks why the invoice is higher. One reason only.', sec: 20, maxWords: 35, s: ['Answer', 'One reason'] }],
+      ch: { k: 'game', game: 'squeeze' } },
+    { t: 'Swap fillers for pauses', icon: '⏸',
+      bites: ['“Um”, “so”, “actually” fill silence because silence feels scary.',
+        'A one-second pause sounds calm and confident to listeners.',
+        'When you feel a filler coming, close your mouth, breathe, continue.'],
+      no: 'Um, so, actually, the next point is, uh, about the budget.',
+      yes: '(pause) The next point is the budget.',
+      say: 'I pause. Then I speak.',
+      practice: [{ p: 'Explain your job in 45 seconds. Pause instead of filling.', sec: 45, s: ['Pause', 'Point', 'Pause'] },
+        { p: 'Describe your ideal weekend. Pause instead of filling.', sec: 45, s: ['Pause', 'Point', 'Pause'] }],
+      ch: { k: 'game', game: 'fighter' } },
+    { t: 'Speak calmly under pressure', icon: '🧊',
+      bites: ['When surprised, the brain rushes. The mouth follows with fillers.',
+        'Use a frame: “Two things…” or “Short answer: …”. It buys time without fillers.',
+        'Slow your first sentence. Speed comes back on its own.'],
+      no: 'Uh, that’s, um, a good question, I mean, there are many things…',
+      yes: '(pause) Two things. First… Second…',
+      say: 'Two things. First… second…',
+      practice: [{ p: 'Surprise question', sec: 30, hidden: true, pool: true, s: ['Pause', 'Two things'] },
+        { p: 'Surprise question', sec: 30, hidden: true, pool: true, s: ['Pause', 'Short answer'] }],
+      ch: { k: 'game', game: 'rapid' } },
+    { t: 'The interview opener', icon: '💼',
+      bites: ['“Tell me about yourself” is not your life story. It is your sales pitch.',
+        'Present – past – future: what you do now, what you have done, why this role.',
+        'Keep it under 60 seconds and end on why you fit.'],
+      no: 'So I studied at… then I joined… then I moved… then…',
+      yes: 'I lead finance reporting for international clients. Before that… That is why this role fits.',
+      say: 'Today I lead finance reporting for international clients.',
+      practice: [{ p: 'Tell me about yourself.', sec: 60, s: ['Present', 'Past', 'Future'], cam: true },
+        { p: 'Why should we hire you?', sec: 45, s: ['Point', 'Proof', 'Point'], cam: true }],
+      ch: { k: 'roleplay', scn: 'interview' } },
+    { t: 'Answer hard questions', icon: '🧱',
+      bites: ['Hard questions make people defend, ramble or apologise.',
+        'Acknowledge in a few words, answer honestly, bridge to your strength.',
+        'If you don’t know: say so, and say when you will find out.'],
+      no: 'No, no, that’s not really… I mean, it wasn’t my fault, actually…',
+      yes: 'Fair question. We missed one deadline in March. We fixed the process, and we’ve been on time since.',
+      say: 'Fair question. Here is the honest answer.',
+      practice: [{ p: 'Interviewer: “What is your biggest weakness?”', sec: 45, s: ['Acknowledge', 'Answer', 'Bridge'] },
+        { p: 'Client: “Why did you miss the last deadline?”', sec: 45, s: ['Acknowledge', 'Answer', 'Bridge'] }],
+      ch: { k: 'camera', prompt: 'On camera: answer “What is your biggest weakness?” calmly. Steady eye contact.', sec: 45 } },
+    { t: 'Ask for what you’re worth', icon: '💰',
+      bites: ['Asking for a raise or promotion is a business case, not a favour.',
+        'Results first, then the ask, then silence. Let them answer.',
+        'Use numbers and examples, not feelings.'],
+      no: 'I was just wondering, if maybe it’s possible, to kind of discuss my salary?',
+      yes: 'This year I took on 12 new clients and cut reporting time by a day. I’d like to discuss a promotion.',
+      say: 'Here are my results. Here is my ask.',
+      practice: [{ p: 'Ask your manager for a promotion in 45 seconds.', sec: 45, s: ['Results', 'Ask', 'Stop'] },
+        { p: 'Ask for a new team member to support your workload.', sec: 45, s: ['Results', 'Ask', 'Stop'] }],
+      ch: { k: 'roleplay', scn: 'raise' } },
+    { t: 'Update senior leaders', icon: '📈',
+      bites: ['Senior leaders want the headline, the risk and the decision they need to make.',
+        'Headline · Done · Next · Need. One line each.',
+        'Check-in day: compare with Day 1.'],
+      no: 'So basically we did a lot this week, like the meeting and the files and…',
+      yes: 'We are on track. Payroll is done. Review is Friday. I need approval by Thursday.',
+      say: 'We are on track. One risk. One ask.',
+      practice: [{ p: 'Give the CEO a 60-second update on your area.', sec: 60, s: ['Headline', 'Done', 'Next', 'Need'], cam: true }],
+      ch: { k: 'bench' }, checkin: true, extra: { k: 'roleplay', scn: 'ceo' } },
+
+    /* ---------- Week 3: Real conversations ---------- */
+    { t: 'Never run out of things to say', icon: '💬',
+      bites: ['Small talk feels hard because we wait for a perfect topic. There isn’t one.',
+        'Use what is around you: the event, the journey, the week, their work.',
+        'Comment + question: “Busy week here. What brought you today?”'],
+      no: '(silence) …so… yeah… nice weather.',
+      yes: 'This place is packed. Have you been to one of these before?',
+      say: 'Busy week. What’s keeping you busy?',
+      practice: [{ p: 'Start a conversation with someone at a work event.', sec: 20, s: ['Comment', 'Question'] },
+        { p: 'Start a chat with a client before the meeting begins.', sec: 20, s: ['Comment', 'Question'] }],
+      ch: { k: 'roleplay', scn: 'coach' } },
+    { t: 'Ask questions people love', icon: '🙋',
+      bites: ['Yes/no questions kill conversations. Open questions keep them going.',
+        'Start with How, What, Why: “What got you into this work?”',
+        'Follow up on their answer instead of jumping to your own story.'],
+      no: 'Do you like your job? … Okay.',
+      yes: 'What do you enjoy most about your work these days?',
+      say: 'What got you into that?',
+      practice: [{ p: 'Ask three open questions to get to know a new colleague.', sec: 30, s: ['How', 'What', 'Why'] },
+        { p: 'Ask a client open questions about their plans for next year.', sec: 30, s: ['How', 'What', 'Why'] }],
+      ch: { k: 'roleplay', scn: 'network' } },
+    { t: 'Handle awkward silence', icon: '🤐',
+      bites: ['A short silence is normal. Panic fills it with fillers or random facts.',
+        'Have three easy restarters ready: their weekend, their work, the event.',
+        'Or go back: “Earlier you mentioned… tell me more.”'],
+      no: '(silence) So… um… yeah… anyway…',
+      yes: 'Earlier you mentioned your trip to Kandy. How was it?',
+      say: 'Earlier you mentioned… tell me more.',
+      practice: [{ p: 'The conversation went silent. Restart it smoothly.', sec: 20, s: ['Callback', 'Question'] },
+        { p: 'Restart a quiet team call with a light question.', sec: 20, s: ['Comment', 'Question'] }],
+      ch: { k: 'game', game: 'fighter' } },
+    { t: 'Listen and build', icon: '👂',
+      bites: ['People like people who make them feel heard.',
+        'Reflect what they said in a few words, then add something or ask more.',
+        '“So the new system saves you time — how did your team react?”'],
+      no: 'Oh nice. Anyway, for me…',
+      yes: 'So the move went well — what surprised you most?',
+      say: 'So what you’re saying is…',
+      practice: [{ p: 'Your colleague says: “I finally finished the audit.” Reflect and build.', sec: 20, s: ['Reflect', 'Build'] },
+        { p: 'A client says: “We are opening a new branch.” Reflect and build.', sec: 20, s: ['Reflect', 'Build'] }],
+      ch: { k: 'roleplay', scn: 'coach' } },
+    { t: 'Tell a short story', icon: '📖',
+      bites: ['Stories are remembered. Lists are forgotten.',
+        'Three beats: situation, what you did, result. Under 60 seconds.',
+        'Add one detail people can picture.'],
+      no: 'So there was this client and things happened and then we fixed it and stuff.',
+      yes: 'A client called at 6 pm: payroll had failed. We rebuilt it in two hours. 300 people were paid on time.',
+      say: 'Let me tell you what happened.',
+      practice: [{ p: 'Tell a story about a hard work situation you solved.', sec: 60, s: ['Situation', 'Action', 'Result'], cam: true },
+        { p: 'Tell a short funny story from your week.', sec: 45, s: ['Situation', 'Twist', 'End'] }],
+      ch: { k: 'camera', prompt: 'On camera: tell your best work story with energy and a clear ending.', sec: 60 } },
+    { t: 'Speak up in groups', icon: '👥',
+      bites: ['The longer you wait in a group, the harder it gets to speak.',
+        'Speak in the first five minutes. Agree and add: “Building on that…”',
+        'Short and clear beats long and perfect.'],
+      no: '(stays quiet the whole meeting)',
+      yes: 'Building on Anna’s point — if we move the cut-off, we save a full day.',
+      say: 'Building on that point…',
+      practice: [{ p: 'Join a team discussion about improving month-end. Add one idea.', sec: 20, s: ['Build on', 'Idea'] },
+        { p: 'Disagree politely in a group: “I see it differently.”', sec: 30, s: ['Acknowledge', 'Different view', 'Why'] }],
+      ch: { k: 'game', game: 'taboo' } },
+    { t: 'Network with confidence', icon: '🤝',
+      bites: ['Networking is not selling. It is being curious and memorable.',
+        'Your one-liner, one question about them, one follow-up.',
+        'Close well: “Great talking. Let’s connect on LinkedIn.”'],
+      no: 'Um, hi, so I work in finance, and, yeah…',
+      yes: 'Hi, I’m Sam. I help businesses get clear numbers. What brings you here tonight?',
+      say: 'Great talking. Let’s stay in touch.',
+      practice: [{ p: 'Introduce yourself to a stranger at a business event and ask about them.', sec: 30, s: ['One-liner', 'Question'] },
+        { p: 'Close a networking chat warmly.', sec: 15, s: ['Thanks', 'Next step'] }],
+      ch: { k: 'roleplay', scn: 'network' } },
+
+    /* ---------- Week 4: Executive presence ---------- */
+    { t: 'The one-sentence update', icon: '1️⃣',
+      bites: ['Sometimes you get one sentence. Make it count.',
+        'Status + key fact + next step: “On track, payroll done, review Friday.”',
+        'Practise compressing. It sharpens every other answer.'],
+      no: 'So, uh, it’s going okay, there are some things, we’re working on it…',
+      yes: 'On track: payroll is done and the review is Friday.',
+      say: 'On track. Done. Next.',
+      practice: [{ p: 'Give a one-sentence update on your week.', sec: 15, maxWords: 25, s: ['Status', 'Fact', 'Next'] },
+        { p: 'One sentence: where is the new client onboarding?', sec: 15, maxWords: 25, s: ['Status', 'Fact', 'Next'] }],
+      ch: { k: 'game', game: 'squeeze' } },
+    { t: 'Handle interruptions', icon: '✋',
+      bites: ['Interruptions throw people off. Some stop. Some speak faster.',
+        'Pause, acknowledge, then return: “Good point — I’ll come to that in a moment.”',
+        'Keep your voice calm and slightly lower.'],
+      no: 'Oh, sorry, sorry, yes, so, um, where was I…',
+      yes: 'Good point — let me finish this one thing, then I’ll answer it.',
+      say: 'Let me finish this point, then I’ll come to yours.',
+      practice: [{ p: 'Someone cuts in during your update. Respond and continue.', sec: 30, s: ['Pause', 'Acknowledge', 'Return'] },
+        { p: 'The CEO interrupts: “Just give me the number.” Respond.', sec: 20, s: ['Number', 'One line'] }],
+      ch: { k: 'roleplay', scn: 'ceo' } },
+    { t: 'Say no without softening', icon: '🚫',
+      bites: ['A soft no (“maybe, I’ll try”) creates confusion and extra work.',
+        'Clear no + reason + alternative: “I can’t this week. I can do Tuesday.”',
+        'Kind tone, clear words.'],
+      no: 'I’ll try, maybe, if I get time, I mean, it’s a bit difficult…',
+      yes: 'I can’t take this on this week. I can start it Tuesday, or a colleague can help today.',
+      say: 'I can’t this week. Here is what I can do.',
+      practice: [{ p: 'Say no to extra work when your team is full.', sec: 30, s: ['No', 'Reason', 'Alternative'] },
+        { p: 'Tell a client their request is out of scope.', sec: 30, s: ['No', 'Reason', 'Alternative'] }],
+      ch: { k: 'camera', prompt: 'On camera: say no to an extra task, kindly and clearly.', sec: 30 } },
+    { t: 'Push back without aggression', icon: '🛡',
+      bites: ['Pushback is not a fight. It is protecting the outcome.',
+        'Acknowledge, give the fact, propose the path: “I understand. The data shows… I suggest…”',
+        'No “but” after the acknowledgement. Use “and”.'],
+      no: 'No, that’s wrong, actually you don’t understand…',
+      yes: 'I understand the concern, and the numbers show a timing difference. I suggest we review it together.',
+      say: 'I understand, and here is what the data shows.',
+      practice: [{ p: 'Push back on an unrealistic deadline from your manager.', sec: 30, s: ['Acknowledge', 'Fact', 'Proposal'] },
+        { p: 'Push back on a client who says your fees are too high.', sec: 30, s: ['Acknowledge', 'Fact', 'Proposal'] }],
+      ch: { k: 'roleplay', scn: 'client' } },
+    { t: 'Read the room, explain simply', icon: '👀',
+      bites: ['The same message needs different words for a CFO, a team member and a new client.',
+        'Ask yourself: what does this person care about? Lead with that.',
+        'No jargon unless they use it first.'],
+      no: 'The GST reconciliation variance arose from accrual timing on the BAS…',
+      yes: 'Your tax report is a little different this quarter because one invoice came early. Nothing is wrong.',
+      say: 'In simple words, here’s what it means for you.',
+      practice: [{ p: 'Explain a BAS or payroll issue to a client who is not in finance.', sec: 45, s: ['What', 'Why it matters', 'Example'] },
+        { p: 'Explain the same issue to your CFO in two sentences.', sec: 20, maxWords: 40, s: ['Fact', 'Impact'] }],
+      ch: { k: 'roleplay', scn: 'newclient' } },
+    { t: 'Land a decision', icon: '✅',
+      bites: ['Many good updates end with nothing decided.',
+        'State the options, your recommendation, and ask for the decision.',
+        '“Do we go with option B?” Then stop and wait.'],
+      no: '…so yeah, there are a few options, let me know what you think.',
+      yes: 'Two options. I recommend B: it’s faster and cheaper. Can we go with B today?',
+      say: 'Can we agree on option B today?',
+      practice: [{ p: 'Get a decision on which software to use for payroll.', sec: 45, s: ['Options', 'Recommend', 'Ask'] },
+        { p: 'Get a decision on hiring one more bookkeeper.', sec: 45, s: ['Options', 'Recommend', 'Ask'] }],
+      ch: { k: 'roleplay', scn: 'raise' } },
+    { t: 'The final pitch', icon: '🏁',
+      bites: ['Today you bring everything together.',
+        'Strong first ten seconds, three-line opener, no weak words, pauses, a clear ask.',
+        'Final check-in: compare with Day 1 and Day 14. Then get your certificate.'],
+      no: 'So, um, I just wanted to maybe present, if that’s okay…',
+      yes: 'Good morning. One idea will save us a day every month. Here is how, and here is what I need.',
+      say: 'One idea. Three lines. One clear ask.',
+      practice: [{ p: 'Pitch one improvement idea to leadership in 60 seconds.', sec: 60, s: ['Hook', 'Idea', 'Benefit', 'Ask'], cam: true }],
+      ch: { k: 'bench' }, checkin: true }
+  ];
+
+  var SURPRISE = ['What would you change about your company?', 'What makes a good manager?', 'How will AI change accounting?', 'What did you learn this week?',
+    'What is your biggest strength?', 'Why do projects run late?', 'What do clients value most?', 'How do you prioritise a busy day?',
+    'What advice would you give a new team member?', 'What makes a meeting useful?'];
+
+  var CHECKIN_DAYS = [1, 14, 28];
   var BENCH = [
-    { key: 'update', prompt: 'Give a 2-minute update on your work this week.', sec: 120, structure: ['Headline', 'Done', 'Next', 'Need'] },
-    { key: 'answer', prompt: 'Tell me about yourself.', sec: 90, structure: ['Point', 'Reason', 'Example', 'Point'] }
+    { key: 'intro', prompt: 'Introduce yourself and tell me what you do, in about a minute.', sec: 60, structure: ['Who', 'What', 'Why it matters'] },
+    { key: 'update', prompt: 'Give a 60-second update on your work this week.', sec: 60, structure: ['Headline', 'Done', 'Next', 'Need'] }
   ];
+  var BENCH_PASSAGE = 'Good morning everyone. / Here is a quick update. / Payroll has been processed for every entity, / and all lodgements were submitted on time. / We found one issue in the client reports, / and it has already been fixed. / I need one decision from you: / whether we hire one more person this quarter. / Thank you.';
 
-  function hash(n) { n = (n * 2654435761) >>> 0; return n; }
+  function hash(n) { return (n * 2654435761) >>> 0; }
   function pickN(arr, n, seed) {
     var out = [], used = {}, i = 0;
     while (out.length < Math.min(n, arr.length) && i < 200) { var k = hash(seed * 31 + i) % arr.length; if (!used[k]) { used[k] = 1; out.push(arr[k]); } i++; }
     return out;
   }
 
-  // Build the plan for a given day (1..60)
   function day(d) {
-    var w = W[Math.floor((d - 1) / 5)], dw = (d - 1) % 5;
-    var checkin = CHECKIN_DAYS.indexOf(d) >= 0;
-    var warm = pickN(WARM, 3, d);
-    var steps = [];
-    if (checkin) {
-      steps.push({ k: 'lesson', min: 2 });
-      BENCH.forEach(function (b) { steps.push({ k: 'bench', bench: b.key, prompt: b.prompt, sec: b.sec, structure: b.structure, min: 3 }); });
-      steps.push({ k: 'warm', lines: warm, min: 3 });
-      steps.push({ k: 'read', text: BENCH_PASSAGE, bench: 'passage', min: 3 });
-      if (d !== 1) steps.push({ k: 'drill', reps: 2, prompts: pickN(w.drill.prompts, 2, d * 7), min: 6 });
-      steps.push({ k: 'talk', topic: w.talk[dw], sec: 180, min: 4 });
+    var x = D[d - 1], wk = WEEKS[Math.floor((d - 1) / 7)];
+    var warm = pickN(WARM, 2, d);
+    var practice = x.practice.map(function (p, i) {
+      var q = Object.assign({}, p);
+      if (p.pool) q.p = SURPRISE[hash(d * 7 + i) % SURPRISE.length];
+      return q;
+    });
+    var steps = [{ k: 'bites', min: 2 }];
+    if (x.checkin) {
+      BENCH.forEach(function (b) { steps.push({ k: 'bench', bench: b.key, prompt: b.prompt, sec: b.sec, structure: b.structure, min: 2 }); });
+      steps.push({ k: 'read', text: BENCH_PASSAGE, bench: 'passage', min: 2 });
+      steps.push({ k: 'drill', reps: practice.length, prompts: practice, min: practice.length * 2 + 1 });
+      if (x.extra) steps.push(Object.assign({ min: 5 }, chStep(x.extra)));
     } else {
-      var talkSec = w.n <= 4 ? 180 : 240;
-      var rp = ROLEPLAY_BY_WEEK[w.n];
-      steps.push({ k: 'warm', lines: warm, min: 3 });
-      steps.push({ k: 'lesson', min: 2 });
-      if (dw === 0) {
-        steps.push({ k: 'drill', reps: 4, prompts: pickN(w.drill.prompts, 4, d * 7), min: 12 });
-        steps.push({ k: 'read', text: w.passage, min: 4 });
-        steps.push({ k: 'talk', topic: w.talk[dw], sec: talkSec, min: 6 });
-      } else if (dw === 1) {
-        steps.push({ k: 'game', game: 'fighter', min: 3 });
-        steps.push({ k: 'drill', reps: 3, prompts: pickN(w.drill.prompts, 3, d * 7), min: 9 });
-        steps.push({ k: 'read', text: w.passage, min: 4 });
-        steps.push({ k: 'talk', topic: w.talk[dw], sec: talkSec, min: 6 });
-      } else if (dw === 2) {
-        steps.push({ k: 'drill', reps: 3, prompts: pickN(w.drill.prompts, 3, d * 7), min: 9 });
-        steps.push({ k: 'read', text: w.passage, min: 4 });
-        if (rp) steps.push({ k: 'roleplay', scn: rp, topic: w.talk[dw], sec: talkSec, min: 9 });
-        else steps.push({ k: 'talk', topic: w.talk[dw], sec: talkSec, min: 6 });
-      } else if (dw === 3) {
-        steps.push({ k: 'game', game: w.n % 2 ? 'taboo' : 'squeeze', min: 4 });
-        steps.push({ k: 'drill', reps: 3, prompts: pickN(w.drill.prompts, 3, d * 7), min: 9 });
-        steps.push({ k: 'read', text: w.passage, min: 4 });
-        steps.push({ k: 'talk', topic: w.talk[dw], sec: talkSec, min: 6 });
-      } else {
-        steps.push({ k: 'game', game: 'rapid', min: 5 });
-        steps.push({ k: 'drill', reps: 2, prompts: pickN(w.drill.prompts, 2, d * 7), min: 6 });
-        steps.push({ k: 'read', text: w.passage, min: 4 });
-        steps.push({ k: 'talk', topic: w.talk[dw], sec: talkSec, min: 6 });
-      }
+      steps.push({ k: 'warm', lines: warm, min: 1 });
+      steps.push({ k: 'drill', reps: practice.length, prompts: practice, min: 5 });
+      steps.push(Object.assign({ min: 4 }, chStep(x.ch)));
     }
     steps.push({ k: 'wrap', min: 1 });
-    return { day: d, week: w, dayOfWeek: dw + 1, focus: w.focus[dw], checkin: checkin, steps: steps };
+    return { day: d, week: wk, info: x, title: x.t, focus: x.bites[1], rule: x.bites[1], checkin: !!x.checkin, steps: steps };
+  }
+  function chStep(c) {
+    if (c.k === 'roleplay') return { k: 'roleplay', scn: c.scn };
+    if (c.k === 'game') return { k: 'game', game: c.game };
+    return { k: 'camera', prompt: c.prompt, sec: c.sec || 45 };
   }
 
-  return { weeks: W, days: 60, day: day, checkinDays: CHECKIN_DAYS, benchPassage: BENCH_PASSAGE };
+  return { days: 28, day: day, weeks: WEEKS, all: D, checkinDays: CHECKIN_DAYS, phase: 1, phaseName: 'Speak Sharp in 28 Days' };
 })();
